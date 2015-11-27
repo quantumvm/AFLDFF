@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <netdb.h>
 
-#include "../types.h"
+#include "afldff_networking.h"
 
 /*
  * Vincent Moscatello - 11/27/2015
@@ -21,7 +21,6 @@ typedef struct udp_socket_info{
     struct addrinfo * si;
     int sfd;
 }udp_socket_info;
-
 
 
 udp_socket_info * get_udp_socket(char * ip, char * port){
