@@ -41,6 +41,9 @@ udp_socket_info * get_udp_socket(char * ip, char * port){
  
     getaddr_ok = getaddrinfo(ip, port, &hints, &result);
     
+    if(getaddr_ok !=0){
+        //handle the error
+    }
 
     for (struct addrinfo * rp = result; rp != NULL; rp = rp->ai_next) {
         sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -85,8 +88,6 @@ int get_packet(int sfd){
 
 int send_packet(int sfd, packet_info * packet){
     send(sfd, packet, sizeof(struct packet_info), 0);
+    return 0;
 }
 
-
-int main(){
-}
