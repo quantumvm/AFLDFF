@@ -10,7 +10,7 @@ typedef struct packet_info{
 int get_udp_server(char * ip, char * port);
 int get_udp_client(char * ip, char * port);
 
-int get_packet(int sfd);
+packet_info * get_packet(int sfd);
 int send_packet(int sfd, packet_info * packet);
 
 #endif

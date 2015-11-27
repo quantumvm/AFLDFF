@@ -80,10 +80,10 @@ int get_udp_client(char * ip, char * port){
     }   
 }
  
-int get_packet(int sfd){
+packet_info * get_packet(int sfd){
     packet_info * packet = malloc(sizeof(struct packet_info));
     recv(sfd, packet, sizeof(struct packet_info), 0);
-    return 0;
+    return packet;
 }
 
 int send_packet(int sfd, packet_info * packet){
