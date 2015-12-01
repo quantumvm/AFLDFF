@@ -43,7 +43,7 @@ static udp_socket_info * get_udp_socket(char * ip, char * port){
     
     if(getaddr_ok !=0){
         fprintf(stderr,"Error getting address information! This may be the" 
-                "result of an invalid IP or port.");
+                       " result of an invalid IP or port.\n");
         exit(EXIT_FAILURE);
     }
 
