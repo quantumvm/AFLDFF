@@ -23,12 +23,15 @@ command_args flags;
 
 
 /********************************************************************
- * Start our udp listener (this should happen in a seperate thread) *
+ * Start our udp listener (starts up listener in seperate thread)
  ********************************************************************/
 void start_server(){
     
 }
 
+/********************************************************************
+ * Enter the ncurses management interface. 
+ ********************************************************************/
 void start_graphics(){
      
 }
@@ -40,7 +43,8 @@ int main(int argc, char * argv[]){
 //use in the command_args structure
  
     int opt;
-    command_args flags;
+
+    //This should be initialized to zero but we will set it again anyway
     memset(&flags, 0, sizeof(struct command_args));
 
     while((opt = getopt(argc, argv, "i:p:h")) != -1){

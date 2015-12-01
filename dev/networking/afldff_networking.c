@@ -24,7 +24,7 @@ typedef struct udp_socket_info{
 }udp_socket_info;
 
 
-udp_socket_info * get_udp_socket(char * ip, char * port){
+static udp_socket_info * get_udp_socket(char * ip, char * port){
     struct addrinfo hints;
     struct addrinfo * result;
     
