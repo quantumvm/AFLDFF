@@ -25,9 +25,61 @@ command_args flags;
 /********************************************************************
  * Start our udp listener (starts up listener in seperate thread)
  ********************************************************************/
-void start_server(){
+static void print_packet_list();
+
+static void start_server(){
+ 
+    int sfd_server = get_udp_server(flags.ip, flags.port);
+    packet_info * pi = NULL;
     
+    if(sfd_server == -1){
+        fprintf(stderr, "Failed to start server!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /*while(1){
+        pi = get_packet(sfd_server);
+
+        printf("contact from node: %d\n", pi->instance_id);
+        printf("test case: %lld\n", pi->test_cases);
+        printf("crashes: %lld\n\n", pi->crashes);
+        free(pi);
+        pi =NULL;
+    }*/
+    
+    GSList * gslp;
+    while(1){
+        gslp = NULL;
+        pi = get_packet(sfd_server);
+
+        //iterate through our linked list. Update it if we find a matching machine ID.
+        for(gslp = N_NODE; gslp; gslp=gslp->next){
+            if(((packet_info *) gslp->data)->instance_id == pi->instance_id){
+                 free(gslp->data);
+                 gslp->data = pi;
+                 break;
+            }
+        }
+
+        if(gslp == NULL){
+            N_NODE = g_slist_append(N_NODE, pi);
+        }
+
+        print_packet_list();
+    }
+       
 }
+
+//debug function for printing packet list
+static void print_packet_list(){
+    puts("\n|---NODE---|");
+    for(GSList * p = N_NODE; p; p=p->next){
+        printf("contact from node: %d\n", ((packet_info *) p->data)->instance_id);
+        printf("test case: %lld\n",       ((packet_info *) p->data)->test_cases);
+        printf("crashes: %lld\n\n",       ((packet_info *) p->data)->crashes);
+    }
+}
+
 
 /********************************************************************
  * Enter the ncurses management interface. 
@@ -74,20 +126,5 @@ int main(int argc, char * argv[]){
     }
 
 //Start up the udp listener. Relocate to a seperate thread later.
-
-    int sfd_server = get_udp_server(flags.ip, flags.port);
-    packet_info * pi = NULL;
-    
-    while(1){
-        pi = get_packet(sfd_server);
-
-        printf("contact from node: %d\n", pi->instance_id);
-        printf("test case: %lld\n", pi->test_cases);
-        printf("crashes: %lld\n\n", pi->crashes);
-        free(pi);
-        pi =NULL;
-    }
-
-    return 0;
-    
+    start_server();
 }

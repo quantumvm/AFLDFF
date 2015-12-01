@@ -21,6 +21,7 @@ int main(int argc, char ** argv){
     srand(time(NULL));
     
     for(int i =0; i< 100; i++){
+        pi.instance_id = rand()%3;
         pi.test_cases = rand(); 
         pi.crashes = rand();
         send_packet(client_sfd, &pi);
