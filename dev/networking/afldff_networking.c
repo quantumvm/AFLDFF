@@ -12,7 +12,7 @@
 /*
  * Vincent Moscatello - 11/27/2015
  *
- * Basic udp networking implementation afldff. Needs to be compiled using posix 
+ * Basic udp networking implementation. Needs to be compiled using posix 
  * standard. May run into some issues with ansii c.
  *
  */
@@ -38,12 +38,7 @@ udp_socket_info * get_udp_socket(char * ip, char * port){
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family=AF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = 0;
-    hints.ai_protocol = 0;
-    hints.ai_canonname = NULL;
-    hints.ai_addr = NULL;
-    hints.ai_next = NULL;
- 
+
     getaddr_ok = getaddrinfo(ip, port, &hints, &result);
     
     if(getaddr_ok !=0){
@@ -66,7 +61,6 @@ udp_socket_info * get_udp_socket(char * ip, char * port){
 
     return NULL;
 }
-
 
 
 int get_udp_server(char * ip, char * port){
