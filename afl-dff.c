@@ -1,13 +1,78 @@
 #include <stdio.h>
-#include <glib.h>
+#include <string.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
+
+#include <glib.h>
 
 #include "dev/networking/afldff_networking.h"
 
-int main(){
-    int sfd_server = get_udp_server("127.0.0.1", "31337");
-    packet_info * pi = NULL;
+//startup flags
+typedef struct command_args{
+    char * ip;
+    char * port;
+}command_args;
 
+
+//Data structure that contains our machine ids and their data.
+GSList * N_NODE = NULL;
+
+//Location of our command line arguments
+command_args flags;
+
+
+/********************************************************************
+ * Start our udp listener (this should happen in a seperate thread) *
+ ********************************************************************/
+void start_server(){
+    
+}
+
+void start_graphics(){
+     
+}
+
+int main(int argc, char * argv[]){
+
+
+//Read our arguments from standard in and set the appropriate flags to 
+//use in the command_args structure
+ 
+    int opt;
+    command_args flags;
+    memset(&flags, 0, sizeof(struct command_args));
+
+    while((opt = getopt(argc, argv, "i:p:h")) != -1){
+        switch(opt){
+        case 'i':
+            flags.ip = optarg;
+            break;
+        case 'p':
+            flags.port = optarg;
+            break;
+        case 'h':
+            puts("-i = ip address to listen on. If left blank default to" 
+                 " 0.0.0.0 ");
+            puts("-p = port to listen on");
+            puts("-h help");
+            exit(0);
+            break;
+        default:
+            fprintf(stderr,"Invalid arguments. -h for help\n");
+            exit(EXIT_FAILURE);
+        }
+    }   
+
+    if( flags.port == NULL ){
+        fprintf(stderr,"Missing command line option '-p'! [-h for help]\n");
+        exit(EXIT_FAILURE);
+    }
+
+//Start up the udp listener. Relocate to a seperate thread later.
+
+    int sfd_server = get_udp_server(flags.ip, flags.port);
+    packet_info * pi = NULL;
     
     while(1){
         pi = get_packet(sfd_server);
@@ -18,6 +83,7 @@ int main(){
         free(pi);
         pi =NULL;
     }
-    
 
+    return 0;
+    
 }

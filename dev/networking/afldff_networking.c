@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -29,6 +30,10 @@ udp_socket_info * get_udp_socket(char * ip, char * port){
     
     int getaddr_ok;
     int sfd;
+    
+    if(ip == NULL){
+        ip = "0.0.0.0";
+    }
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family=AF_UNSPEC;
@@ -42,7 +47,9 @@ udp_socket_info * get_udp_socket(char * ip, char * port){
     getaddr_ok = getaddrinfo(ip, port, &hints, &result);
     
     if(getaddr_ok !=0){
-        //handle the error
+        fprintf(stderr,"Error getting address information! This may be the" 
+                "result of an invalid IP or port.");
+        exit(EXIT_FAILURE);
     }
 
     for (struct addrinfo * rp = result; rp != NULL; rp = rp->ai_next) {
