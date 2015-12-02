@@ -37,16 +37,7 @@ static void start_server(){
         exit(EXIT_FAILURE);
     }
 
-    /*while(1){
-        pi = get_packet(sfd_server);
-
-        printf("contact from node: %d\n", pi->instance_id);
-        printf("test case: %lld\n", pi->test_cases);
-        printf("crashes: %lld\n\n", pi->crashes);
-        free(pi);
-        pi =NULL;
-    }*/
-    
+   
     GSList * gslp;
     while(1){
         gslp = NULL;
@@ -60,7 +51,8 @@ static void start_server(){
                  break;
             }
         }
-
+        
+        //if the id is not in our linked list append it.
         if(gslp == NULL){
             N_NODE = g_slist_append(N_NODE, pi);
         }
