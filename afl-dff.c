@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include <glib.h>
+#include <pthread.h>
 
 #include "dev/networking/afldff_networking.h"
 
@@ -27,7 +28,7 @@ command_args flags;
  ********************************************************************/
 static void print_packet_list();
 
-static void start_server(){
+void * start_server(void *ptr){
  
     int sfd_server = get_udp_server(flags.ip, flags.port);
     packet_info * pi = NULL;
@@ -72,6 +73,15 @@ static void print_packet_list(){
     }
 }
 
+//start server thread
+void start_server_thread(pthread_t * thread){
+    int ret = pthread_create(thread, NULL, start_server, NULL);
+    if(ret){
+        fprintf(stderr, "Could not start server thread!");
+        exit(EXIT_FAILURE);
+    }
+}
+
 
 /********************************************************************
  * Enter the ncurses management interface. 
@@ -81,13 +91,13 @@ void start_graphics(){
 }
 
 int main(int argc, char * argv[]){
-
+    pthread_t udp_listener;
 
 //Read our arguments from standard in and set the appropriate flags to 
 //use in the command_args structure
  
     int opt;
-
+    
     //This should be initialized to zero but we will set it again anyway
     memset(&flags, 0, sizeof(struct command_args));
 
@@ -118,5 +128,6 @@ int main(int argc, char * argv[]){
     }
 
 //Start up the udp listener. Relocate to a seperate thread later.
-    start_server();
+    start_server_thread(&udp_listener);
+    getchar();
 }

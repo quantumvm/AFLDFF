@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -std=gnu99
-PKG = `pkg-config --cflags --libs glib-2.0` 
+PKG = `pkg-config --cflags --libs glib-2.0` -pthread
 
 default: main
 
