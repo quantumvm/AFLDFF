@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "dev/networking/afldff_networking.h"
+#include "dev/interface/afldff_ncurses.h"
 
 //startup flags
 typedef struct command_args{
@@ -177,13 +178,16 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);       
     }
      
-    while(1){
+    /*while(1){
         char buffer[16];
         printf("Enter id:");
         fgets(buffer, sizeof(buffer), stdin);
         printf("Crash cases = %lld\n", get_crash_cases(atoi(buffer)));
         printf("Test cases = %lld\n\n", get_test_cases(atoi(buffer)));
 
-    }
+    }*/
 
+    draw_afldff_interface();
 }
+
+
