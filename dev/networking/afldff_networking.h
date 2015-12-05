@@ -2,7 +2,7 @@
 #define AFLDFF_NETWORKING
 
 typedef struct packet_info{
-    int instance_id;
+    unsigned int instance_id;
     long long test_cases;
     long long crashes;
 }packet_info;
