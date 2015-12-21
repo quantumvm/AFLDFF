@@ -131,16 +131,16 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);       
     }
      
-    while(1){
+    /*while(1){
         char buffer[16];
         printf("Enter id:");
         fgets(buffer, sizeof(buffer), stdin);
-        printf("Crash cases = %lld\n", get_crash_cases(atoi(buffer)));
-        printf("Test cases = %lld\n\n", get_test_cases(atoi(buffer)));
+        printf("Crash cases = %lld\n", get_crash_case(atoi(buffer)));
+        printf("Test cases = %lld\n\n", get_test_case(atoi(buffer)));
 
-    }
+    }*/
 
-    //draw_afldff_interface();
+    draw_afldff_interface();
 }
 
 
