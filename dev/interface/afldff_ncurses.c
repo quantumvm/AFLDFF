@@ -1,4 +1,8 @@
-#include <panel.h>
+#include <ncurses.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
 
 //these values are wrong but I will figure out how to get the
 //terminal length later.
@@ -8,22 +12,25 @@ static size_t terminal_y = 24;
 
 void draw_afldff_interface(){
     WINDOW * win;
-    PANEL  * panel;
     
     initscr();
-    cbreak();
     noecho();
+    curs_set(0);
 
     win = newwin(terminal_y, terminal_x/2-2, 0, terminal_x/2 +1);
-    box(win,0,0);
-    panel = new_panel(win);
-
-    update_panels();
-    //draw all the things
-    doupdate();
     
-
-    getch();
+    time_t t;
+    srand((unsigned) time(&t));
+    
+    while(1){
+        wclear(win);
+        box(win,0,0);
+        mvwprintw(win,1,1,"The value was: %d", rand());
+        wrefresh(win);
+        sleep(2);
+    }
+    
     endwin();
+
 
 }
