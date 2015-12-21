@@ -9,6 +9,7 @@
 
 #include "dev/networking/afldff_networking.h"
 #include "dev/interface/afldff_ncurses.h"
+#include "dev/access_methods/afldff_access.h"
 
 //startup flags
 typedef struct command_args{
@@ -26,49 +27,10 @@ pthread_mutex_t ll_mutex;
 command_args flags;
 
 
-/********************************************************************
- * Thread safe functions for accessing packet linked list           *
- ********************************************************************/
-//I want to go back later and implement these as a binary search but cest 
-//la vie shouldn't really have much of an impact on performance. Unless
-//the number of connected machines is greater than 10;
-
-long long get_test_cases(unsigned int id ){
-    long long test_cases;
-
-    pthread_mutex_lock(&ll_mutex);
-        for(GSList * gslp = N_NODE; gslp; gslp=gslp->next){
-            if(((packet_info *) gslp->data)->instance_id == id){
-                test_cases = ((packet_info *) gslp->data)->test_cases;
-                pthread_mutex_unlock(&ll_mutex);
-                return test_cases; 
-            }
-        }       
-    pthread_mutex_unlock(&ll_mutex);
-
-    return -1;
-}
-
-long long get_crash_cases(unsigned int id){
-    long long crash_cases;
-
-    pthread_mutex_lock(&ll_mutex);
-        for(GSList * gslp = N_NODE; gslp; gslp=gslp->next){
-            if(((packet_info *) gslp->data)->instance_id == id){
-                crash_cases = ((packet_info *) gslp->data)->crashes;
-                pthread_mutex_unlock(&ll_mutex); 
-                return crash_cases;
-            }
-        }       
-    pthread_mutex_unlock(&ll_mutex);
-
-    return -1;
-}
 
 /********************************************************************
  * Start our udp listener (starts up listener in seperate thread)   *
  ********************************************************************/
-static void print_packet_list();
 
 void * start_server(void *ptr){
  
@@ -107,15 +69,6 @@ void * start_server(void *ptr){
        
 }
 
-//debug function for printing packet list
-static void print_packet_list(){
-    puts("\n|---NODE---|");
-    for(GSList * p = N_NODE; p; p=p->next){
-        printf("contact from node: %d\n", ((packet_info *) p->data)->instance_id);
-        printf("test case: %lld\n",       ((packet_info *) p->data)->test_cases);
-        printf("crashes: %lld\n\n",       ((packet_info *) p->data)->crashes);
-    }
-}
 
 //start server thread
 void start_server_thread(pthread_t * thread){
@@ -178,16 +131,16 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);       
     }
      
-    /*while(1){
+    while(1){
         char buffer[16];
         printf("Enter id:");
         fgets(buffer, sizeof(buffer), stdin);
         printf("Crash cases = %lld\n", get_crash_cases(atoi(buffer)));
         printf("Test cases = %lld\n\n", get_test_cases(atoi(buffer)));
 
-    }*/
+    }
 
-    draw_afldff_interface();
+    //draw_afldff_interface();
 }
 
 
