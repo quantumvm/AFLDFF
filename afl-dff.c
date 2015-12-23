@@ -27,7 +27,6 @@ pthread_mutex_t ll_mutex;
 command_args flags;
 
 
-
 /********************************************************************
  * Start our udp listener (starts up listener in seperate thread)   *
  ********************************************************************/
@@ -41,7 +40,6 @@ void * start_server(void *ptr){
         fprintf(stderr, "Failed to start server!\n");
         exit(EXIT_FAILURE);
     }
-
    
     GSList * gslp;
     while(1){
@@ -49,7 +47,7 @@ void * start_server(void *ptr){
         pi = get_packet(sfd_server);
         
         pthread_mutex_lock(&ll_mutex);
-            //iterate through our linked list. Update it if we find a matching machine ID.
+            //iterate through linked list. Update if matching machine ID is found.
             for(gslp = N_NODE; gslp; gslp=gslp->next){
                 if(((packet_info *) gslp->data)->instance_id == pi->instance_id){
                      free(gslp->data);
@@ -58,7 +56,6 @@ void * start_server(void *ptr){
                 }
             }
             
-
             //if the id is not in our linked list append it.
             if(gslp == NULL){
                 N_NODE = g_slist_append(N_NODE, pi);
