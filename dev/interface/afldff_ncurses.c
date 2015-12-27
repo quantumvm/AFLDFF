@@ -42,7 +42,7 @@ static void main_menu_right(WINDOW * window){
 
 //Update left window logic. If enter key was not pressed
 //return NULL. Otherwise return pointer to selected item.
-void stuff(WINDOW * window, MENU * menu){
+ITEM * left_main_menu_logic(WINDOW * window, MENU * menu){
     int c = wgetch(window);
     switch(c){
         case KEY_DOWN:
@@ -53,78 +53,102 @@ void stuff(WINDOW * window, MENU * menu){
             menu_driver(menu, REQ_UP_ITEM);
             wrefresh(window);
             break;
+        case 10:
+            return current_item(menu);
+            break;
     }
+
+    return NULL;
     
 }
 
 
-char * choices[]={
+static char * left_main_menu_options[]={
     "Choice_1",
     "Choice_2",
     "Choice_3",
     "Exit"
 };
 
-
 static void main_menu(){
-	MENU *my_menu;
-        WINDOW *my_menu_win, *right_win;
-        int n_options;
-        
-        init_pair(1, COLOR_YELLOW, 0); 
-        init_pair(2, COLOR_RED, 0);
+    MENU *my_menu;
+    WINDOW *my_menu_win, *right_win;
+    int n_options;
+    
+    //initialize color schemes used by update window
+    init_pair(1, COLOR_YELLOW, 0); 
+    init_pair(2, COLOR_RED, 0);
+
+    
+    //Initialize an array of items to put in menu
+    n_options = sizeof(left_main_menu_options)/sizeof(ITEM *);
+    ITEM ** my_items = (ITEM **)calloc(n_options+1, sizeof(ITEM *)); 
+    for(int i = 0; i < n_options; i++){
+            my_items[i] = new_item(left_main_menu_options[i], "");
+    }
+    
+    //initialize menu
+    my_menu = new_menu(my_items);
+    
+    //create the left and right windows for main menu.
+    right_win = newwin(12, 37, 0, 41);
+    my_menu_win = newwin(12, 40, 0, 0);
+    keypad(my_menu_win, TRUE);
+    nodelay(my_menu_win, TRUE);
+ 
+    /* Set main window and sub window */
+    set_menu_win(my_menu, my_menu_win);
+    set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
+    set_menu_mark(my_menu, " * ");
+
+    /* Print a border around the main window and print a title */
+    box(my_menu_win, 0, 0);
+    mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
+    mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
+    mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
+    mvprintw(LINES - 2, 0, "F1 to exit");
+
+    //menu post
+    post_menu(my_menu);
+    wrefresh(my_menu_win);
 
 
-	/* Create items */
-        n_options = sizeof(choices)/sizeof(ITEM *);
-        ITEM ** my_items = (ITEM **)calloc(n_options+1, sizeof(ITEM *));
+    while(1){
+        main_menu_right(right_win);
+        ITEM * choice = left_main_menu_logic(my_menu_win, my_menu); 
+
+        /************************************************
+         *Switch used to control Main menu options      *
+         ************************************************/
+                
+        if(choice != NULL){
+            char * menu_selection = (char *) item_name(choice);
+            if(strcmp(menu_selection, left_main_menu_options[0]) == 0){
+                
+            }
+            else if(strcmp(menu_selection, left_main_menu_options[1]) == 0){
+                
+            }
+            else if(strcmp(menu_selection, left_main_menu_options[2]) == 0){
+                
+            }               
+            else if(strcmp(menu_selection, left_main_menu_options[3]) == 0){
+                endwin();
+                exit(0);
+            }
         
-        for(int i = 0; i < n_options; i++){
-                my_items[i] = new_item(choices[i], "");
         }
-	
-        /* Crate menu */
-	my_menu = new_menu(my_items);
-
-	/* Create the window to be associated with the menu */
-        right_win = newwin(12, 37, 0, 41);
-        my_menu_win = newwin(12, 40, 0, 0);
-        keypad(my_menu_win, TRUE);
-        nodelay(my_menu_win, TRUE);
-     
-	/* Set main window and sub window */
-        set_menu_win(my_menu, my_menu_win);
-        set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
-
-	/* Set menu mark to the string " * " */
-        set_menu_mark(my_menu, " * ");
-
-	/* Print a border around the main window and print a title */
-        box(my_menu_win, 0, 0);
-	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
-	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
-	mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
-	mvprintw(LINES - 2, 0, "F1 to exit");
-//	refresh();
-        
-	/* Post the menu */
-	post_menu(my_menu);
-	wrefresh(my_menu_win);
+                
+        usleep(10000);
+    }
 
 
-        while(1){
-            stuff(my_menu_win, my_menu); 
-            main_menu_right(right_win);
-            usleep(100000);
-        }
-
-
-	/* Unpost and free all the memory taken up */
-        unpost_menu(my_menu);
-        free_menu(my_menu);
-        for(int i = 0; i < n_options; ++i)
-                free_item(my_items[i]);
-	endwin();
+    /* Unpost and free all the memory taken up */
+    unpost_menu(my_menu);
+    free_menu(my_menu);
+    for(int i = 0; i < n_options; ++i)
+            free_item(my_items[i]);
+    endwin();
 }
 
 
