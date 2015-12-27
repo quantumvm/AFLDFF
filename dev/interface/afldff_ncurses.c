@@ -9,7 +9,7 @@
 
 #include <pthread.h>
 
-#include "../access_methods/afldff_access.h"
+#include "../networking/afldff_access.h"
 
 //Just assume the user has a normal terminal. This needs
 //to be adjusted later.

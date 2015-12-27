@@ -8,8 +8,8 @@
 #include <pthread.h>
 
 #include "dev/networking/afldff_networking.h"
+#include "dev/networking/afldff_access.h"
 #include "dev/interface/afldff_ncurses.h"
-#include "dev/access_methods/afldff_access.h"
 
 //startup flags
 typedef struct command_args{

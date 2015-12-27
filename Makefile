@@ -13,8 +13,8 @@ afldff_networking.o: dev/networking/afldff_networking.c dev/networking/afldff_ne
 afldff_ncurses.o: dev/interface/afldff_ncurses.c dev/interface/afldff_ncurses.h
 	$(CC) $(CFLAGS) -c dev/interface/afldff_ncurses.c -o afldff_ncurses.o
 
-afldff_access.o: dev/access_methods/afldff_access.c dev/access_methods/afldff_access.h
-	$(CC) $(CFLAGS) -c dev/access_methods/afldff_access.c $(PKG) -o afldff_access.o
+afldff_access.o: dev/networking/afldff_access.c dev/networking/afldff_access.h
+	$(CC) $(CFLAGS) -c dev/networking/afldff_access.c $(PKG) -o afldff_access.o
 
 
 clean:
