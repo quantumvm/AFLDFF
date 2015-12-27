@@ -76,14 +76,6 @@ void start_server_thread(pthread_t * thread){
     }
 }
 
-
-/********************************************************************
- * Enter the ncurses management interface. 
- ********************************************************************/
-void start_graphics(){
-     
-}
-
 int main(int argc, char * argv[]){
     pthread_t udp_listener;
 
@@ -128,15 +120,6 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);       
     }
      
-    /*while(1){
-        char buffer[16];
-        printf("Enter id:");
-        fgets(buffer, sizeof(buffer), stdin);
-        printf("Crash cases = %lld\n", get_crash_case(atoi(buffer)));
-        printf("Test cases = %lld\n\n", get_test_case(atoi(buffer)));
-
-    }*/
-
     draw_afldff_interface();
 }
 
