@@ -1,4 +1,6 @@
 #include <ncurses.h>
+#include <menu.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,99 +11,147 @@
 
 #include "../access_methods/afldff_access.h"
 
-//these values are wrong but I will figure out how to get the
-//terminal length later.
+//Just assume the user has a normal terminal. This needs
+//to be adjusted later.
 
 static size_t terminal_x = 80;
 static size_t terminal_y = 24;
 
-enum {MAIN_MENU, RANDOM_WINDOW} afldff_state;
+//Our state machine kept in the data segment
+enum afldff_state {MAIN_MENU, TEST_STATE};
+enum afldff_state global_state = MAIN_MENU;
 
-void * draw_update_window(void *ptr){
-    /*********************************
-     * HANDLE UPDATE WIN STUFF       *
-     *********************************/
-    int * is_alive = ptr;
 
-    WINDOW * status_win;
+static void main_menu_right(WINDOW * window){
+
+    werase(window);
+    box(window,0,0);
+
+    wattron(window, COLOR_PAIR(1));
+    mvwprintw(window,1,1,"Tests:   %ld", get_all_test_cases());
+    wattroff(window, COLOR_PAIR(1));
     
-    //set up colors
-    init_pair(1, COLOR_YELLOW, 0); 
-    init_pair(2, COLOR_RED, 0); 
+    wattron(window, COLOR_PAIR(2));
+    mvwprintw(window,2,1,"Crashes: %ld", get_all_crash_cases());
+    wattroff(window, COLOR_PAIR(2));
+    
+    wrefresh(window);
 
-    status_win = newwin(terminal_y, terminal_x/2-2, 0, terminal_x/2 +1);
+}
 
-    while(*is_alive){
-        wclear(status_win);
-        box(status_win,0,0);
 
-        wattron(status_win, COLOR_PAIR(1));
-        mvwprintw(status_win,1,1,"Tests:   %ld", get_all_test_cases());
-        wattroff(status_win, COLOR_PAIR(1));
-        
-        wattron(status_win, COLOR_PAIR(2));
-        mvwprintw(status_win,2,1,"Crashes: %ld", get_all_crash_cases());
-        wattroff(status_win, COLOR_PAIR(2));
-        
-        wrefresh(status_win);
-        sleep(2);
+//Update left window logic. If enter key was not pressed
+//return NULL. Otherwise return pointer to selected item.
+void stuff(WINDOW * window, MENU * menu){
+    int c = wgetch(window);
+    switch(c){
+        case KEY_DOWN:
+            menu_driver(menu, REQ_DOWN_ITEM);
+            wrefresh(window);
+            break;
+        case KEY_UP:
+            menu_driver(menu, REQ_UP_ITEM);
+            wrefresh(window);
+            break;
     }
     
-    delwin(status_win);
-    pthread_exit(0);
 }
 
-static void draw_main_menu(){
- 
-    WINDOW * menu_win;
 
-    /********************************
-     *HANDLE MENU WINDOW            *
-     ********************************/
-    char welcome_message[] = "Welcome to AFLDFF!";
-    
-    //used to center message
-    int title_x = terminal_x/4 - (strlen(welcome_message)/2) - 1;
-    
-    menu_win = newwin(terminal_y, terminal_x/2,0,1);
-    mvwprintw(menu_win, 1, title_x, welcome_message);
-    wrefresh(menu_win);
+char * choices[]={
+    "Choice_1",
+    "Choice_2",
+    "Choice_3",
+    "Exit"
+};
 
+
+static void main_menu(){
+	MENU *my_menu;
+        WINDOW *my_menu_win, *right_win;
+        int n_options;
+        
+        init_pair(1, COLOR_YELLOW, 0); 
+        init_pair(2, COLOR_RED, 0);
+
+
+	/* Create items */
+        n_options = sizeof(choices)/sizeof(ITEM *);
+        ITEM ** my_items = (ITEM **)calloc(n_options+1, sizeof(ITEM *));
+        
+        for(int i = 0; i < n_options; i++){
+                my_items[i] = new_item(choices[i], "");
+        }
+	
+        /* Crate menu */
+	my_menu = new_menu(my_items);
+
+	/* Create the window to be associated with the menu */
+        right_win = newwin(12, 37, 0, 41);
+        my_menu_win = newwin(12, 40, 0, 0);
+        keypad(my_menu_win, TRUE);
+        nodelay(my_menu_win, TRUE);
+     
+	/* Set main window and sub window */
+        set_menu_win(my_menu, my_menu_win);
+        set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
+
+	/* Set menu mark to the string " * " */
+        set_menu_mark(my_menu, " * ");
+
+	/* Print a border around the main window and print a title */
+        box(my_menu_win, 0, 0);
+	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
+	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
+	mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
+	mvprintw(LINES - 2, 0, "F1 to exit");
+//	refresh();
+        
+	/* Post the menu */
+	post_menu(my_menu);
+	wrefresh(my_menu_win);
+
+
+        while(1){
+            stuff(my_menu_win, my_menu); 
+            main_menu_right(right_win);
+            usleep(100000);
+        }
+
+
+	/* Unpost and free all the memory taken up */
+        unpost_menu(my_menu);
+        free_menu(my_menu);
+        for(int i = 0; i < n_options; ++i)
+                free_item(my_items[i]);
+	endwin();
+}
+
+
+static void test_state(){
+    printw("This is only a test");
+    refresh();
     getchar();
-    delwin(menu_win);
-
-
 }
-
-
-static void draw_main(){
-    //this will be a shared flag that will tell the update window to 
-    //destroy itself
-    int * main_menu_alive = malloc(sizeof(int));
-    *main_menu_alive = 1;
-
-    pthread_t update_window;
-    pthread_create(&update_window, NULL, draw_update_window, main_menu_alive);
-    draw_main_menu();
-    endwin();
-    
-    free(main_menu_alive);
-
-}
-
 
 void draw_afldff_interface(){
     initscr();
-    noecho();
     start_color();
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);   
     curs_set(0);
-
-    switch(afldff_state){
-        case MAIN_MENU: draw_main(); return;
-        case RANDOM_WINDOW: return;
-
-    }
     
+    global_state = MAIN_MENU;
+
+    while(1){
+        switch(global_state){
+            case MAIN_MENU: main_menu(); break;
+            case TEST_STATE: test_state(); break;
+
+        }
+    }
+    printw("I'm sorely grieved I may not steera");
     exit(0);
 
 }
