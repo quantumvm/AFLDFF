@@ -18,7 +18,7 @@ static size_t terminal_x = 80;
 static size_t terminal_y = 24;
 
 //Our state machine kept in the data segment
-enum afldff_state {MAIN_MENU, TEST_STATE};
+enum afldff_state {MAIN_MENU, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
 
@@ -64,9 +64,9 @@ ITEM * left_main_menu_logic(WINDOW * window, MENU * menu){
 
 
 static char * left_main_menu_options[]={
-    "Choice_1",
-    "Choice_2",
-    "Choice_3",
+    "View jobs",
+    "Collect crashes",
+    "Apply patch",
     "Exit"
 };
 
@@ -91,22 +91,25 @@ static void main_menu(){
     my_menu = new_menu(my_items);
     
     //create the left and right windows for main menu.
-    right_win = newwin(12, 37, 0, 41);
-    my_menu_win = newwin(12, 40, 0, 0);
+    my_menu_win = newwin(terminal_y/2, (terminal_x/2), 0, 0);
+    right_win = newwin(terminal_y/2, (terminal_x/2), 0, terminal_x/2);
     keypad(my_menu_win, TRUE);
     nodelay(my_menu_win, TRUE);
  
-    /* Set main window and sub window */
+    // main/sub window
     set_menu_win(my_menu, my_menu_win);
-    set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
+    set_menu_sub(my_menu, derwin(my_menu_win, 6, (terminal_x/2)-2, 3, 1));
+    
+    //Set title of left menu and selection character
+    char program_title[] = "Welcome to AFLDFF!";
+    mvwprintw(my_menu_win, 1, (terminal_x/4)-(strlen(program_title)/2), program_title);
     set_menu_mark(my_menu, " * ");
-
-    /* Print a border around the main window and print a title */
+    
+    //box seperator for left menu
     box(my_menu_win, 0, 0);
     mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
-    mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
-    mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
-    mvprintw(LINES - 2, 0, "F1 to exit");
+    mvwhline(my_menu_win, 2, 1, ACS_HLINE, (terminal_x/2)-2);
+    mvwaddch(my_menu_win, 2, (terminal_x/2)-1, ACS_RTEE);
 
     //menu post
     post_menu(my_menu);
@@ -123,18 +126,25 @@ static void main_menu(){
                 
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
-            if(strcmp(menu_selection, left_main_menu_options[0]) == 0){
-                
+            if(strcmp(menu_selection, left_main_menu_options[0]) == 0){ 
+                global_state = WOOPS;
+                return;
             }
             else if(strcmp(menu_selection, left_main_menu_options[1]) == 0){
-                
+                global_state = WOOPS;
+                return;
             }
             else if(strcmp(menu_selection, left_main_menu_options[2]) == 0){
-                
+                global_state = WOOPS;
+                return;
             }               
             else if(strcmp(menu_selection, left_main_menu_options[3]) == 0){
                 endwin();
                 exit(0);
+            }
+            else{
+                global_state = WOOPS;
+                return;
             }
         
         }
@@ -146,16 +156,24 @@ static void main_menu(){
     /* Unpost and free all the memory taken up */
     unpost_menu(my_menu);
     free_menu(my_menu);
-    for(int i = 0; i < n_options; ++i)
+    for(int i = 0; i < n_options; ++i){
             free_item(my_items[i]);
-    endwin();
+    }
+    delwin(my_menu_win);
+    delwin(right_win);
+
 }
 
 
-static void test_state(){
-    printw("This is only a test");
+static void woops(){
+    char error_message[] = "Woops! your not suppose to be here!";
+    
+    clear();
+    mvprintw(terminal_y/2, (terminal_x/2)-(strlen(error_message)/2), error_message);
     refresh();
     getchar();
+    endwin();
+    exit(1);
 }
 
 void draw_afldff_interface(){
@@ -171,7 +189,7 @@ void draw_afldff_interface(){
     while(1){
         switch(global_state){
             case MAIN_MENU: main_menu(); break;
-            case TEST_STATE: test_state(); break;
+            case WOOPS: woops(); break;
 
         }
     }
