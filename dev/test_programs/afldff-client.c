@@ -22,16 +22,16 @@ int main(int argc, char ** argv){
     //and other values to NULL
     packet_info pi[3];
     
-    memcpy(pi[0].hash,"AAAAAAAAAAAAAAAA", 16);
-    memcpy(pi[1].hash,"AAAAAAAAAAAAAAAA", 16);
-    memcpy(pi[2].hash,"BBBBBBBBBBBBBBBB", 16);
-    
-
     for(int i=0; i<3; i++){
         memset(&pi[i], 0, sizeof(struct packet_info));
         pi[i].instance_id = i;
     }
 
+    //initialize hash
+    memcpy(pi[0].hash,"AAAAAAAAAAAAAAAA", 16);
+    memcpy(pi[1].hash,"AAAAAAAAAAAAAAAA", 16);
+    memcpy(pi[2].hash,"BBBBBBBBBBBBBBBB", 16);
+ 
 
     int id;
     
