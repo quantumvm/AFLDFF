@@ -26,15 +26,20 @@ static void main_menu_right(WINDOW * window){
 
     werase(window);
     box(window,0,0);
-
-    wattron(window, COLOR_PAIR(1));
-    mvwprintw(window,1,1,"Tests:   %ld", get_all_test_cases());
-    wattroff(window, COLOR_PAIR(1));
     
+    wattron(window, COLOR_PAIR(1));
+    mvwprintw(window,1,1,"Name: ALL");
+    wattroff(window, COLOR_PAIR(1));
+   
     wattron(window, COLOR_PAIR(2));
-    mvwprintw(window,2,1,"Crashes: %ld", get_all_crash_cases());
+    mvwprintw(window,2,1,"Tests:   %ld", get_all_test_cases());
     wattroff(window, COLOR_PAIR(2));
     
+    wattron(window, COLOR_PAIR(3));
+    mvwprintw(window,3,1,"Crashes: %ld", get_all_crash_cases());
+    wattroff(window, COLOR_PAIR(3));
+    
+   
     wrefresh(window);
 
 }
@@ -76,8 +81,10 @@ static void main_menu(){
     int n_options;
     
     //initialize color schemes used by update window
-    init_pair(1, COLOR_YELLOW, 0); 
-    init_pair(2, COLOR_RED, 0);
+    init_pair(1, COLOR_BLUE, 0);
+    init_pair(2, COLOR_YELLOW, 0); 
+    init_pair(3, COLOR_RED, 0);
+
 
     
     //Initialize an array of items to put in menu
