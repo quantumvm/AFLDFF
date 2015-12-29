@@ -3,6 +3,7 @@
 
 typedef struct packet_info{
     unsigned int instance_id;
+    char hash[16];
     long long test_cases;
     long long crashes;
 }packet_info;

@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <pthread.h>
 
+#include "afl-dff.h"
 #include "dev/networking/afldff_networking.h"
 #include "dev/networking/afldff_access.h"
 #include "dev/interface/afldff_ncurses.h"
@@ -19,11 +20,22 @@ typedef struct command_args{
 
 
 //Data structure that contains our machine ids and their data.
-GSList * N_NODE = NULL;
+//
+// |------|   |------|
+// | name |-> | name | -> NULL
+// |------|   |------|
+//    |          |
+//    V          V
+// |------|     NULL
+// | ID   |
+// |------|
+//
+GSList * GLOBAL_JOB_MATRIX = NULL;
+
 //mutex for accessing linked list
 pthread_mutex_t ll_mutex;
 
-//Location of our command line arguments
+//command line arguments
 command_args flags;
 
 
@@ -34,31 +46,53 @@ command_args flags;
 void * start_server(void *ptr){
  
     int sfd_server = get_udp_server(flags.ip, flags.port);
-    packet_info * pi = NULL;
     
     if(sfd_server == -1){
         fprintf(stderr, "Failed to start server!\n");
         exit(EXIT_FAILURE);
     }
    
-    GSList * gslp;
     while(1){
-        gslp = NULL;
-        pi = get_packet(sfd_server);
         
+        packet_info * pi = get_packet(sfd_server);
+         
         pthread_mutex_lock(&ll_mutex);
-            //iterate through linked list. Update if matching machine ID is found.
-            for(gslp = N_NODE; gslp; gslp=gslp->next){
-                if(((packet_info *) gslp->data)->instance_id == pi->instance_id){
-                     free(gslp->data);
-                     gslp->data = pi;
+            
+            //Look for a job node that has the hash found in the incoming packet
+            GSList * job_node_list_pointer = GLOBAL_JOB_MATRIX;    
+            for(; job_node_list_pointer; job_node_list_pointer=job_node_list_pointer->next){
+                job_node * data = job_node_list_pointer->data; 
+                if(memcmp( data->hash, pi->hash, 16)== 0){
+                    break;
+                }
+            }
+            
+
+            //If the hash is not found create a new job node and add it to the
+            //job matrix.
+            if(job_node_list_pointer == NULL){
+                job_node * data = calloc(1, sizeof(struct job_node));
+                memcpy(data->hash, pi->hash, 16);
+                GLOBAL_JOB_MATRIX = g_slist_append(GLOBAL_JOB_MATRIX, data);
+                job_node_list_pointer = g_slist_last(GLOBAL_JOB_MATRIX);
+            }
+            
+            
+            //Try and find matching ID in job
+            job_node * job = job_node_list_pointer->data;
+            GSList * pilp = job->packet_info_list;
+            for(; pilp; pilp=pilp->next){
+                packet_info * data = pilp->data;
+                if(data->instance_id == pi->instance_id){
+                     free(pilp->data);
+                     pilp->data = pi;
                      break;
                 }
             }
             
             //if the id is not in our linked list append it.
-            if(gslp == NULL){
-                N_NODE = g_slist_append(N_NODE, pi);
+            if(pilp == NULL){
+                job->packet_info_list = g_slist_append(job->packet_info_list, pi);
             }
         pthread_mutex_unlock(&ll_mutex);
         
