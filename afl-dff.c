@@ -7,6 +7,11 @@
 #include <glib.h>
 #include <pthread.h>
 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+
 #include "afl-dff.h"
 #include "dev/networking/afldff_networking.h"
 #include "dev/networking/afldff_access.h"
@@ -54,7 +59,7 @@ void * start_server(void *ptr){
    
     while(1){
         
-        packet_info * pi = get_packet(sfd_server);
+        packet_info * pi = get_packet_info(sfd_server);
          
         pthread_mutex_lock(&ll_mutex);
             
@@ -62,7 +67,7 @@ void * start_server(void *ptr){
             GSList * job_node_list_pointer = GLOBAL_JOB_MATRIX;    
             for(; job_node_list_pointer; job_node_list_pointer=job_node_list_pointer->next){
                 job_node * data = job_node_list_pointer->data; 
-                if(memcmp( data->hash, pi->hash, 16)== 0){
+                if(memcmp( data->hash, pi->p->hash, 16)== 0){
                     break;
                 }
             }
@@ -72,7 +77,7 @@ void * start_server(void *ptr){
             //job matrix.
             if(job_node_list_pointer == NULL){
                 job_node * data = calloc(1, sizeof(struct job_node));
-                memcpy(data->hash, pi->hash, 16);
+                memcpy(data->hash, pi->p->hash, 16);
                 GLOBAL_JOB_MATRIX = g_slist_append(GLOBAL_JOB_MATRIX, data);
                 job_node_list_pointer = g_slist_last(GLOBAL_JOB_MATRIX);
             }
@@ -83,8 +88,8 @@ void * start_server(void *ptr){
             GSList * pilp = job->packet_info_list;
             for(; pilp; pilp=pilp->next){
                 packet_info * data = pilp->data;
-                if(data->instance_id == pi->instance_id){
-                     free(pilp->data);
+                if(data->p->instance_id == pi->p->instance_id){
+                     free_packet_info(pilp->data);
                      pilp->data = pi;
                      break;
                 }
@@ -95,7 +100,10 @@ void * start_server(void *ptr){
                 job->packet_info_list = g_slist_append(job->packet_info_list, pi);
             }
         pthread_mutex_unlock(&ll_mutex);
-        
+       
+        //struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
+        //printf("sockaddr: %s\n", inet_ntoa(sockin->sin_addr));
+
     }
        
 }
@@ -153,7 +161,8 @@ int main(int argc, char * argv[]){
         fprintf(stderr,"Failed to create mutex\n");
         exit(EXIT_FAILURE);       
     }
-     
+    
+
     draw_afldff_interface();
 }
 

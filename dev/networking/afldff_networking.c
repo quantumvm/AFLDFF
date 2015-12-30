@@ -23,7 +23,6 @@ typedef struct udp_socket_info{
     int sfd;
 }udp_socket_info;
 
-
 static udp_socket_info * get_udp_socket(char * ip, char * port){
     struct addrinfo hints;
     struct addrinfo * result;
@@ -81,10 +80,38 @@ int get_udp_client(char * ip, char * port){
     }   
 }
  
-packet_info * get_packet(int sfd){
-    packet_info * packet = malloc(sizeof(struct packet_info));
-    recv(sfd, packet, sizeof(struct packet_info), 0);
-    return packet;
+packet_info * get_packet_info(int sfd){
+    packet_info * pinfo = calloc(1,sizeof(struct packet_info));
+    pinfo->p = calloc(1,sizeof(struct packet));
+
+    pinfo->addrlen = sizeof(struct sockaddr); 
+
+    int rok = recvfrom( sfd, 
+                        
+                        //buf, len, flags
+                        pinfo->p, 
+                        sizeof(struct packet), 
+                        0, 
+                        
+                        //src_addr, addrlen
+                        &(pinfo->src_addr), 
+                        &(pinfo->addrlen));
+    
+    if(rok != sizeof(struct packet)){
+        fprintf(stderr, "recvfrom failed!");
+        exit(1);
+    }
+    
+    time(&(pinfo->time_joined));
+
+    return pinfo;
+}
+
+void free_packet_info(packet_info * pi){ 
+    if(pi->p != NULL){
+        free(pi->p);
+    }
+    free(pi);
 }
 
 int send_packet(int sfd, packet_info * packet){

@@ -18,8 +18,8 @@ long long get_test_case(unsigned int id ){
         for(GSList * jlp=GLOBAL_JOB_MATRIX; jlp; jlp=jlp->next){
             job_node * job = jlp->data; 
             for(GSList * gslp = job->packet_info_list; gslp; gslp=gslp->next){
-                if(((packet_info *) gslp->data)->instance_id == id){
-                    test_cases = ((packet_info *) gslp->data)->test_cases;
+                if(((packet_info *) gslp->data)->p->instance_id == id){
+                    test_cases = ((packet_info *) gslp->data)->p->test_cases;
                     pthread_mutex_unlock(&ll_mutex);
                     return test_cases; 
                 }
@@ -40,8 +40,8 @@ long long get_crash_case(unsigned int id){
         for(GSList * jlp=GLOBAL_JOB_MATRIX; jlp; jlp=jlp->next){
             job_node * job = jlp->data; 
             for(GSList * gslp = job->packet_info_list; gslp; gslp=gslp->next){
-                if(((packet_info *) gslp->data)->instance_id == id){
-                    crash_cases = ((packet_info *) gslp->data)->crashes;
+                if(((packet_info *) gslp->data)->p->instance_id == id){
+                    crash_cases = ((packet_info *) gslp->data)->p->crashes;
                     pthread_mutex_unlock(&ll_mutex);
                     return crash_cases; 
                 }
@@ -63,7 +63,7 @@ long long get_all_crash_cases(){
         for(GSList * jlp=GLOBAL_JOB_MATRIX; jlp; jlp=jlp->next){
             job_node * job = jlp->data; 
             for(GSList * gslp = job->packet_info_list; gslp; gslp=gslp->next){
-                crash_cases = crash_cases + ((packet_info *) gslp->data)->crashes;
+                crash_cases = crash_cases + ((packet_info *) gslp->data)->p->crashes;
             }
          }
 
@@ -81,7 +81,7 @@ long long get_all_test_cases(){
         for(GSList * jlp=GLOBAL_JOB_MATRIX; jlp; jlp=jlp->next){
             job_node * job = jlp->data; 
             for(GSList * gslp = job->packet_info_list; gslp; gslp=gslp->next){
-                test_cases = test_cases + ((packet_info *) gslp->data)->test_cases;
+                test_cases = test_cases + ((packet_info *) gslp->data)->p->test_cases;
             }
          }
 
