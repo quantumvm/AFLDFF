@@ -6,14 +6,23 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <pthread.h>
 #include <glib.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "../networking/afldff_access.h"
+
+#include "../networking/afldff_networking.h"
+
 
 extern GQueue * NEW_NODE_QUEUE;
 extern pthread_mutex_t q_mutex;
+extern pthread_mutex_t ll_mutex;
 
 
 //Just assume the user has a normal terminal. This needs
@@ -26,15 +35,40 @@ static size_t terminal_y = 24;
 enum afldff_state {MAIN_MENU, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
+static char * hash_to_string(char * hash){
+    char * hash_string = malloc(32+1);
+    for(int i=0; i<16;i++){
+        sprintf(&hash_string[i*2], "%02x", hash[i]);
+    }
+
+    hash_string[32] = '\x00';
+    return hash_string;
+}
 
 static void main_menu_bottom(WINDOW * window){
-
+    pthread_mutex_lock(&ll_mutex);
     pthread_mutex_lock(&q_mutex);
     if(!g_queue_is_empty(NEW_NODE_QUEUE)){
-        g_queue_pop_head(NEW_NODE_QUEUE);
-        wprintw(window,"Hello world\n");
+        packet_info * pi = g_queue_pop_head(NEW_NODE_QUEUE);
+        
+        //
+        char * hash = hash_to_string(pi->p->hash);
+        
+        struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
+        char * source_ip = inet_ntoa(sockin->sin_addr);
+        
+        struct tm * time_info;
+        time_info = localtime(&pi->time_joined);
+
+        wprintw(window,"New node %d has joined from %s at %s", 
+                pi->p->instance_id, 
+                source_ip, 
+                asctime(time_info));
+        
+        free(hash);
     }
     pthread_mutex_unlock(&q_mutex);
+    pthread_mutex_unlock(&ll_mutex);
     wrefresh(window);
 
 }
