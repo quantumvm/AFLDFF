@@ -20,10 +20,10 @@ int main(int argc, char ** argv){
     
     //Create three diffrent machines and initialize their IDs
     //and other values to NULL
-    packet_info pi[3];
+    packet pi[3];
     
     for(int i=0; i<3; i++){
-        memset(&pi[i], 0, sizeof(struct packet_info));
+        memset(&pi[i], 0, sizeof(struct packet));
         pi[i].instance_id = i;
     }
 

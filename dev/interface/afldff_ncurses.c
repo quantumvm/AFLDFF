@@ -8,8 +8,13 @@
 #include <unistd.h>
 
 #include <pthread.h>
+#include <glib.h>
 
 #include "../networking/afldff_access.h"
+
+extern GQueue * NEW_NODE_QUEUE;
+extern pthread_mutex_t q_mutex;
+
 
 //Just assume the user has a normal terminal. This needs
 //to be adjusted later.
@@ -21,6 +26,18 @@ static size_t terminal_y = 24;
 enum afldff_state {MAIN_MENU, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
+
+static void main_menu_bottom(WINDOW * window){
+
+    pthread_mutex_lock(&q_mutex);
+    if(!g_queue_is_empty(NEW_NODE_QUEUE)){
+        g_queue_pop_head(NEW_NODE_QUEUE);
+        wprintw(window,"Hello world\n");
+    }
+    pthread_mutex_unlock(&q_mutex);
+    wrefresh(window);
+
+}
 
 static void main_menu_right(WINDOW * window){
 
@@ -47,7 +64,7 @@ static void main_menu_right(WINDOW * window){
 
 //Update left window logic. If enter key was not pressed
 //return NULL. Otherwise return pointer to selected item.
-ITEM * left_main_menu_logic(WINDOW * window, MENU * menu){
+ITEM * main_menu_left(WINDOW * window, MENU * menu){
     int c = wgetch(window);
     switch(c){
         case KEY_DOWN:
@@ -77,7 +94,7 @@ static char * left_main_menu_options[]={
 
 static void main_menu(){
     MENU *my_menu;
-    WINDOW *my_menu_win, *right_win;
+    WINDOW *my_menu_win, *right_win, *bottom_win_box, *bottom_win;
     int n_options;
     
     //initialize color schemes used by update window
@@ -97,9 +114,12 @@ static void main_menu(){
     //initialize menu
     my_menu = new_menu(my_items);
     
-    //create the left and right windows for main menu.
+    //create the left, right, and bottom windows for main menu.
     my_menu_win = newwin(terminal_y/2, (terminal_x/2), 0, 0);
     right_win = newwin(terminal_y/2, (terminal_x/2), 0, terminal_x/2);
+    bottom_win_box = newwin(terminal_y/2, terminal_x, terminal_y/2, 0);
+    bottom_win = newwin(terminal_y/2-2, terminal_x-2, terminal_y/2+1,1);
+    
     keypad(my_menu_win, TRUE);
     nodelay(my_menu_win, TRUE);
  
@@ -121,11 +141,14 @@ static void main_menu(){
     //menu post
     post_menu(my_menu);
     wrefresh(my_menu_win);
-
+    
+    box(bottom_win_box, 0, 0);
+    wrefresh(bottom_win_box);
 
     while(1){
         main_menu_right(right_win);
-        ITEM * choice = left_main_menu_logic(my_menu_win, my_menu); 
+        main_menu_bottom(bottom_win);
+        ITEM * choice = main_menu_left(my_menu_win, my_menu); 
 
         /************************************************
          *Switch used to control Main menu options      *

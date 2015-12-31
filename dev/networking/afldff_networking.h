@@ -24,6 +24,6 @@ int get_udp_client(char * ip, char * port);
 
 packet_info * get_packet_info(int sfd);
 void free_packet_info(packet_info * pi);
-int send_packet(int sfd, packet_info * packet);
+int send_packet(int sfd, packet * packet);
 
 #endif

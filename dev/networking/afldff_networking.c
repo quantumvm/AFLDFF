@@ -114,8 +114,8 @@ void free_packet_info(packet_info * pi){
     free(pi);
 }
 
-int send_packet(int sfd, packet_info * packet){
-    send(sfd, packet, sizeof(struct packet_info), 0);
+int send_packet(int sfd, packet * p){
+    send(sfd, p, sizeof(struct packet), 0);
     return 0;
 }
 

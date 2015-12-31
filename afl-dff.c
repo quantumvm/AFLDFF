@@ -22,6 +22,8 @@ typedef struct command_args{
     char * ip;
     char * port;
 }command_args;
+//command line arguments
+command_args flags;
 
 
 //Data structure that contains our machine ids and their data.
@@ -36,13 +38,13 @@ typedef struct command_args{
 // |------|
 //
 GSList * GLOBAL_JOB_MATRIX = NULL;
-
 //mutex for accessing linked list
 pthread_mutex_t ll_mutex;
 
-//command line arguments
-command_args flags;
 
+GQueue * NEW_NODE_QUEUE = NULL;
+//mutex for accessing queue
+pthread_mutex_t q_mutex;
 
 /********************************************************************
  * Start our udp listener (starts up listener in seperate thread)   *
@@ -98,6 +100,11 @@ void * start_server(void *ptr){
             //if the id is not in our linked list append it.
             if(pilp == NULL){
                 job->packet_info_list = g_slist_append(job->packet_info_list, pi);
+                
+                pthread_mutex_lock(&q_mutex);
+                    g_queue_push_head(NEW_NODE_QUEUE, pi);
+                pthread_mutex_unlock(&q_mutex);
+                
             }
         pthread_mutex_unlock(&ll_mutex);
        
@@ -156,12 +163,18 @@ int main(int argc, char * argv[]){
     }
 
 //Start up the udp listener and initialize mutex
-    start_server_thread(&udp_listener);
     if(pthread_mutex_init(&ll_mutex, NULL)!=0){
         fprintf(stderr,"Failed to create mutex\n");
         exit(EXIT_FAILURE);       
-    }
-    
+    }   
+    start_server_thread(&udp_listener);
+
+//Create queue mutex and initialize queue data structure
+    if(pthread_mutex_init(&q_mutex, NULL)!=0){
+        fprintf(stderr,"Failed to create mutex\n");
+        exit(EXIT_FAILURE);       
+    }    
+    NEW_NODE_QUEUE = g_queue_new(); 
 
     draw_afldff_interface();
 }
