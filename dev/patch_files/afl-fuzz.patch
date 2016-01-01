@@ -1,0 +1,107 @@
+--- ../original/afl-1.96b/afl-fuzz.c	2015-12-15 23:57:42.000000000 -0500
++++ afl-fuzz-modified.c	2016-01-01 18:14:02.898154353 -0500
+@@ -31,6 +31,7 @@
+ #include "debug.h"
+ #include "alloc-inl.h"
+ #include "hash.h"
++#include "afldff_networking.h"
+ 
+ #include <stdio.h>
+ #include <unistd.h>
+@@ -55,6 +56,9 @@
+ #include <sys/ioctl.h>
+ #include <sys/file.h>
+ 
++//This will probably break apple compatability :c
++#include <openssl/md5.h>
++
+ #if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
+ #  include <sys/sysctl.h>
+ #endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
+@@ -245,8 +249,13 @@
+ static s16 interesting_16[] = { INTERESTING_8, INTERESTING_16 };
+ static s32 interesting_32[] = { INTERESTING_8, INTERESTING_16, INTERESTING_32 };
+ 
+-/* Fuzzing stages */
++/* Globals for networking */
++static int afldff_socket;
++static int afl_dff_id;
++static char * ip_address;
++static char * port;
+ 
++/* Fuzzing stages */
+ enum {
+   /* 00 */ STAGE_FLIP1,
+   /* 01 */ STAGE_FLIP2,
+@@ -3229,7 +3238,28 @@
+              last_hang_time / 1000, exec_tmout, use_banner, orig_cmdline);
+              /* ignore errors */
+ 
+-  fclose(f);
++    fclose(f);
++    
++    /*********************************************************************
++     * In addition to writing the stats to a file, send them to afl-dff  *
++     *********************************************************************/
++
++    if(afldff_socket != -1){
++        packet p;
++        
++        memset(&p, 0, sizeof(packet));
++
++        MD5_CTX c;
++        MD5_Init(&c);
++        MD5_Update(&c, target_path, strlen(target_path));
++        MD5_Final(p.hash, &c);
++        
++        p.instance_id = afl_dff_id;
++        p.test_cases = total_execs;
++        p.crashes = unique_crashes;
++
++        send_packet(afldff_socket, &p);
++    }
+ 
+ }
+ 
+@@ -7370,9 +7400,26 @@
+ 
+   doc_path = access(DOC_PATH, F_OK) ? "docs" : DOC_PATH;
+ 
+-  while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:Q")) > 0)
++  while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:QI:P:D:")) > 0)
+ 
+     switch (opt) {
++      /*******************************************************
++       *Add the flags we need for the networking components. *
++       *******************************************************/
++      
++      //destination IP address
++      case 'I':
++          ip_address = optarg;
++          break;
++
++      //destination port
++      case 'P':
++          port = optarg;
++          break;
++      
++      case 'D':
++          afl_dff_id = atoi(optarg);
++          break;
+ 
+       case 'i':
+ 
+@@ -7535,6 +7582,13 @@
+ 
+   if (!strcmp(in_dir, out_dir))
+     FATAL("Input and output directories can't be the same");
++  
++  if(ip_address == NULL || port == NULL){
++    puts("Ignoring networking component: missing destination ip " 
++         "address or port");
++  }else{
++    afldff_socket = get_udp_client(ip_address, port); 
++  }
+ 
+   if (dumb_mode) {
+ 

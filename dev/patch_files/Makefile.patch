@@ -1,0 +1,28 @@
+--- ../original/afl-1.96b/Makefile	2015-12-15 23:24:06.000000000 -0500
++++ Makefile-modified	2016-01-01 18:14:13.010154568 -0500
+@@ -25,12 +25,12 @@
+ PROGS       = afl-gcc afl-as afl-fuzz afl-showmap afl-tmin afl-gotcpu
+ 
+ CFLAGS     ?= -O3 -funroll-loops
+-CFLAGS     += -Wall -D_FORTIFY_SOURCE=2 -g -Wno-pointer-sign \
++CFLAGS     += -std=gnu99 -Wall -D_FORTIFY_SOURCE=2 -g -Wno-pointer-sign \
+ 	      -DAFL_PATH=\"$(HELPER_PATH)\" -DDOC_PATH=\"$(DOC_PATH)\" \
+ 	      -DBIN_PATH=\"$(BIN_PATH)\" -DVERSION=\"$(VERSION)\"
+ 
+ ifneq "$(filter Linux GNU%,$(shell uname))" ""
+-  LDFLAGS  += -ldl
++  LDFLAGS  += -ldl -lssl -lcrypto
+ endif
+ 
+ ifeq "$(findstring clang, $(shell $(CC) --version 2>/dev/null))" ""
+@@ -66,8 +66,8 @@
+ 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS) 
+ 	ln -sf afl-as as
+ 
+-afl-fuzz: afl-fuzz.c $(COMM_HDR) | test_x86
+-	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
++afl-fuzz: afl-fuzz.c  $(COMM_HDR) | test_x86
++	$(CC) $(CFLAGS) afldff_networking.c afl-fuzz.c -o afl-fuzz $(LDFLAGS)
+ 
+ afl-showmap: afl-showmap.c $(COMM_HDR) | test_x86
+ 	$(CC) $(CFLAGS) $@.c -o $@ $(LDFLAGS)
