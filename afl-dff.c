@@ -162,6 +162,13 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
+//Create queue mutex and initialize queue data structure
+    NEW_NODE_QUEUE = g_queue_new(); 
+    if(pthread_mutex_init(&q_mutex, NULL)!=0){
+        fprintf(stderr,"Failed to create mutex\n");
+        exit(EXIT_FAILURE);       
+    }
+
 //Start up the udp listener and initialize mutex
     if(pthread_mutex_init(&ll_mutex, NULL)!=0){
         fprintf(stderr,"Failed to create mutex\n");
@@ -169,12 +176,7 @@ int main(int argc, char * argv[]){
     }   
     start_server_thread(&udp_listener);
 
-//Create queue mutex and initialize queue data structure
-    if(pthread_mutex_init(&q_mutex, NULL)!=0){
-        fprintf(stderr,"Failed to create mutex\n");
-        exit(EXIT_FAILURE);       
-    }    
-    NEW_NODE_QUEUE = g_queue_new(); 
+    
 
     draw_afldff_interface();
 }
