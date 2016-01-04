@@ -35,24 +35,13 @@ static size_t terminal_y = 24;
 enum afldff_state {MAIN_MENU, APPLY_PATCH, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
-static char * hash_to_string(char * hash){
-    char * hash_string = malloc(32+1);
-    for(int i=0; i<16;i++){
-        sprintf(&hash_string[i*2], "%02x", hash[i]);
-    }
-
-    hash_string[32] = '\x00';
-    return hash_string;
-}
-
 static void main_menu_bottom(WINDOW * window){
     pthread_mutex_lock(&ll_mutex);
     pthread_mutex_lock(&q_mutex);
     if(!g_queue_is_empty(NEW_NODE_QUEUE)){
         packet_info * pi = g_queue_pop_head(NEW_NODE_QUEUE);
         
-        //
-        char * hash = hash_to_string(pi->p->hash);
+        //char * hash = hash_to_string(pi->p->hash);
         
         struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
         char * source_ip = inet_ntoa(sockin->sin_addr);
@@ -65,7 +54,7 @@ static void main_menu_bottom(WINDOW * window){
                 source_ip, 
                 asctime(time_info));
         
-        free(hash);
+        //free(hash);
     }
     pthread_mutex_unlock(&q_mutex);
     pthread_mutex_unlock(&ll_mutex);

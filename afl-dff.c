@@ -16,11 +16,14 @@
 #include "dev/networking/afldff_networking.h"
 #include "dev/networking/afldff_access.h"
 #include "dev/interface/afldff_ncurses.h"
+#include "dev/patch/afldff_patch.h"
 
 //startup flags
 typedef struct command_args{
     char * ip;
     char * port;
+    char * path_afl_tar;
+
 }command_args;
 //command line arguments
 command_args flags;
@@ -117,12 +120,20 @@ void * start_server(void *ptr){
 
 
 //start server thread
-void start_server_thread(pthread_t * thread){
+static void start_server_thread(pthread_t * thread){
     int ret = pthread_create(thread, NULL, start_server, NULL);
     if(ret){
         fprintf(stderr, "Could not start server thread!");
         exit(EXIT_FAILURE);
     }
+}
+
+static void print_help(){
+    puts("afl-dff [ options ]");
+    puts("  -i ip       - IP address to listen on defaults to 0.0.0.0 if left blank");
+    puts("  -p port     - Port to listen on");
+    puts("  -m tar      - Patch afl to be network compatable");
+    puts("  -h help     - Print help screen");   
 }
 
 int main(int argc, char * argv[]){
@@ -136,7 +147,7 @@ int main(int argc, char * argv[]){
     //This should be initialized to zero but we will set it again anyway
     memset(&flags, 0, sizeof(struct command_args));
 
-    while((opt = getopt(argc, argv, "i:p:h")) != -1){
+    while((opt = getopt(argc, argv, "m:i:p:h")) != -1){
         switch(opt){
         case 'i':
             flags.ip = optarg;
@@ -144,21 +155,26 @@ int main(int argc, char * argv[]){
         case 'p':
             flags.port = optarg;
             break;
+        case 'm':
+            flags.path_afl_tar = optarg;
+            break;
         case 'h':
-            puts("-i = ip address to listen on. If left blank default to" 
-                 " 0.0.0.0 ");
-            puts("-p = port to listen on");
-            puts("-h help");
+            print_help();
             exit(0);
             break;
         default:
-            fprintf(stderr,"Invalid arguments. -h for help\n");
+            print_help();
             exit(EXIT_FAILURE);
         }
     }   
+    
+    if(flags.path_afl_tar != NULL){
+        patch_afl(flags.path_afl_tar, 1);
+        exit(0);
+    }
 
     if( flags.port == NULL ){
-        fprintf(stderr,"Missing command line option '-p'! [-h for help]\n");
+        print_help();
         exit(EXIT_FAILURE);
     }
 
