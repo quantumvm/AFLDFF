@@ -4,11 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "afldff_patch.h"
 
 static char * afl_valid_hash[] = {
     "a87164448a1e9a4007919a26c29e7c76" //afl-1.96b
 };
+
+/************************************************************
+ * Return an ascii representation of the hash pointed to by *
+ * char * hash                                              *
+ ************************************************************/
 
 static char * hash_to_string(unsigned char * hash){
     char * hash_string = calloc(1,32+1);
@@ -22,7 +30,11 @@ static char * hash_to_string(unsigned char * hash){
     return hash_string;
 }
 
-//Check if the hash of the tar is equal to a supported hash 
+
+/************************************************************
+ * Check if the hash of the tar is equal to a supported     *
+ * hash return 0 on success and -1 on failure.              *
+ ************************************************************/
 
 static int afl_valid_tar(char * file_name){
     
@@ -64,6 +76,50 @@ static int afl_valid_tar(char * file_name){
     return -1;
 }
 
+
+/************************************************************
+ * Untar afl return 0 on success and -1 on failure          *
+ * cli is not currently supported and does nothing          *
+ ************************************************************/
+
+static int untar_afl(char * path, int cli){
+    
+    //tar -xf [path to afl tar]
+    char * args[4];
+    args[0] = "tar";
+    args[1] = "-xf";
+    args[2] = path;
+    args[3] = NULL;
+    
+    pid_t pid;
+    if((pid = fork()) == 0){
+        execvp(args[0], args);  
+    }
+    else if(pid == -1){
+        if(cli){
+            fprintf(stderr, "Failed to fork.");
+        }
+        return -1;
+    }
+    
+    int status;
+    waitpid(pid, &status, 0);
+
+    if(!WIFEXITED(status)){
+        return -1;
+    }
+
+    return 0;
+
+
+}
+
+
+/************************************************************
+ * Function for applying patch to afl. Mark cli (command    *
+ * line) 1 for console output                               *
+ ************************************************************/
+
 int patch_afl(char * afl_tar_path, int cli){
     //check that the tar file exists before trying to extract it.
     if(access(afl_tar_path, R_OK) == -1){
@@ -74,14 +130,21 @@ int patch_afl(char * afl_tar_path, int cli){
     }
     
     //Make sure our patches support this version of afl
-    if(afl_valid_tar(afl_tar_path) == 0){
-        puts("Valid version of AFL");
-    }else{
+    if(afl_valid_tar(afl_tar_path) == -1){
         if(cli){
             fprintf(stderr, "This version of AFL is not supported!\n");
         }
         return -1;
     }
+    
+    //untar afl
+    if(untar_afl(afl_tar_path, 1) == -1){
+        if(cli){
+            fprintf(stderr, "Failed to untar afl");
+        }
+        return -1;
+    }
+
     
     return 0;
 }
