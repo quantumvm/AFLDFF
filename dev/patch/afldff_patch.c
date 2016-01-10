@@ -1,17 +1,36 @@
+#define _GNU_SOURCE
+
 #include <unistd.h>
 #include <string.h>
 #include <openssl/md5.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <glib.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
+
 #include "afldff_patch.h"
 
-static char * afl_valid_hash[] = {
-    "a87164448a1e9a4007919a26c29e7c76" //afl-1.96b
-};
+typedef struct afl_version_info{
+    char * hash;
+    char * version;
+}afl_version_info;
+
+
+static GSList* afl_valid_versions = NULL;
+static afl_version_info * valid_version = NULL;
+
+static void set_afl_version_info(){
+    
+    //version 1.96b
+    afl_version_info * version = malloc(sizeof(struct afl_version_info));
+    version->hash = "a87164448a1e9a4007919a26c29e7c76";
+    version->version = "afl-1.96b";
+    
+    afl_valid_versions = g_slist_append(afl_valid_versions, version);
+}
 
 /************************************************************
  * Return an ascii representation of the hash pointed to by *
@@ -60,12 +79,13 @@ static int afl_valid_tar(char * file_name){
     MD5_Final((unsigned char *) hash, &md5_context); 
      
     //check that the tar hash matches a supported version of afl
-    for(int i=0; i<(sizeof(afl_valid_hash)/sizeof(char *)); ++i){
+    for(GSList * gslp = afl_valid_versions ; gslp; gslp = gslp->next){
         char * tar_hash_string = hash_to_string((unsigned char *)hash);        
 
-        if(strcmp(tar_hash_string, afl_valid_hash[i]) == 0){
+        if(strcmp(tar_hash_string, ((struct afl_version_info *) gslp->data)->hash) == 0){
             fclose(tar_file);
             free(tar_hash_string);
+            valid_version = (struct afl_version_info *) gslp->data;
             return 0;
         }
         
@@ -79,7 +99,6 @@ static int afl_valid_tar(char * file_name){
 
 /************************************************************
  * Untar afl return 0 on success and -1 on failure          *
- * cli is not currently supported and does nothing          *
  ************************************************************/
 
 static int untar_afl(char * path, int cli){
@@ -111,9 +130,53 @@ static int untar_afl(char * path, int cli){
 
     return 0;
 
-
 }
 
+/************************************************************
+ * Patch afl return 0 on success and -1 on failure          *
+ ************************************************************/
+
+static int patch_file(char * source_code, char * patch_file, int cli){
+    char * args[4];
+    args[0] = "patch";
+    args[1] = source_code;
+    args[2] = patch_file;
+    args[3] = NULL;
+    
+    if(access(patch_file, R_OK) == -1){
+        if(cli){
+            fprintf(stderr, "Could not get patch file [did you run make install?]\n");
+        }
+        return -1;
+    }
+
+    if(access(source_code, R_OK | W_OK) == -1){
+        if(cli){
+            fprintf(stderr, "Could not get afl source\n");
+        }
+        return -1;
+    }
+
+    pid_t pid;
+    if((pid = fork()) == 0){
+        execvp(args[0], args);  
+    }
+    else if(pid == -1){
+        if(cli){
+            fprintf(stderr, "Failed to fork.");
+        }
+        return -1;
+    }
+    
+    int status;
+    waitpid(pid, &status, 0);
+
+    if(!WIFEXITED(status)){
+        return -1;
+    }
+
+    return 0;   
+}
 
 /************************************************************
  * Function for applying patch to afl. Mark cli (command    *
@@ -121,6 +184,11 @@ static int untar_afl(char * path, int cli){
  ************************************************************/
 
 int patch_afl(char * afl_tar_path, int cli){
+    //create linked list of valid afl versions
+    if((valid_version == NULL) || (afl_valid_versions == NULL)){
+        set_afl_version_info();
+    }
+    
     //check that the tar file exists before trying to extract it.
     if(access(afl_tar_path, R_OK) == -1){
         if(cli){
@@ -138,13 +206,37 @@ int patch_afl(char * afl_tar_path, int cli){
     }
     
     //untar afl
-    if(untar_afl(afl_tar_path, 1) == -1){
+    if(untar_afl(afl_tar_path, cli) == -1){
         if(cli){
             fprintf(stderr, "Failed to untar afl");
         }
         return -1;
     }
+    
+    //If untar was successful get the path into the extracted tar
+    char * afl_c_source;
+    char * afl_makefile_source;
+    asprintf(&afl_c_source,         "%s/%s", valid_version->version, "afl-fuzz.c");
+    asprintf(&afl_makefile_source,  "%s/%s", valid_version->version, "Makefile");
 
+    //patch c file
+    if(patch_file(afl_c_source, "/opt/afldff/afl-fuzz.patch", cli) == -1){
+        if(cli){
+            fprintf(stderr, "Failed to patch afl-fuzz.c");
+        }
+        return -1;
+    }   
+    
+    //patch Makefile
+    if(patch_file(afl_makefile_source, "/opt/afldff/Makefile.patch", cli) == -1){
+        if(cli){
+            fprintf(stderr, "Failed to patch Makefile");
+        }
+        return -1;
+    }
+    
+    free(afl_c_source);
+    free(afl_makefile_source);
     
     return 0;
 }
