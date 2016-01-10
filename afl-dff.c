@@ -129,11 +129,11 @@ static void start_server_thread(pthread_t * thread){
 }
 
 static void print_help(){
-    puts("afl-dff [ options ]");
+    puts("afldff [ options ]");
     puts("  -i ip       - IP address to listen on defaults to 0.0.0.0 if left blank");
     puts("  -p port     - Port to listen on");
     puts("  -m tar      - Patch afl to be network compatable");
-    puts("  -h help     - Print help screen");   
+    puts("  -h          - Print help screen");   
 }
 
 int main(int argc, char * argv[]){
