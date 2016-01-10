@@ -12,7 +12,7 @@ afldff [ options ]
   -h          - Print help screen
 ```
 
-##installation
+##Installation
 ``` 
 $ make
 # make install
