@@ -1,6 +1,8 @@
 # AFLDFF
 AFLDFF (American Fuzzy Lop Distributed Fuzzing Framework) is a tool designed to make to process of fuzzing with AFL across multiple machines easier. It features a retro curses interface for manageing machines and keeping track of test cases and crashes.
 
+![afldff](https://cloud.githubusercontent.com/assets/1786880/12220160/854cd6c8-b731-11e5-9331-89716de0cfb0.png)
+
 ##Usage
 ```
 afldff [ options ]
