@@ -19,6 +19,11 @@ afldff_access.o: dev/networking/afldff_access.c dev/networking/afldff_access.h
 afldff_patch.o: dev/patch/afldff_patch.c dev/patch/afldff_patch.h
 	$(CC) $(CFLAGS) -c dev/patch/afldff_patch.c $(PKG)  -o afldff_patch.o
 
+install: afldff
+	install -m 0755 afldff /usr/local/bin
+	install -m 0755 -d /opt/afldff
+	install -m 0755 dev/patch/patch_files/* /opt/afldff
+
 clean:
 	rm afldff
 	rm afldff_networking.o
