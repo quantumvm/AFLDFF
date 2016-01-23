@@ -22,7 +22,10 @@ afldff_patch.o: dev/patch/afldff_patch.c dev/patch/afldff_patch.h
 install: afldff
 	install -m 0755 afldff /usr/local/bin
 	install -m 0755 -d /opt/afldff
-	install -m 0755 dev/patch/patch_files/* /opt/afldff
+	install -m 0755 -d /opt/afldff/patches
+	install -m 0755 dev/patch/patch_files/* /opt/afldff/patches
+	install -m 0755 dev/networking/afldff_networking.c /opt/afldff
+	install -m 0755 dev/networking/afldff_networking.h /opt/afldff
 
 clean:
 	rm afldff
