@@ -116,7 +116,7 @@ static int untar_afl(char * path, int cli){
     }
     else if(pid == -1){
         if(cli){
-            fprintf(stderr, "Failed to fork.");
+            fprintf(stderr, "Failed to fork.\n");
         }
         return -1;
     }
@@ -163,7 +163,7 @@ static int patch_file(char * source_code, char * patch_file, int cli){
     }
     else if(pid == -1){
         if(cli){
-            fprintf(stderr, "Failed to fork.");
+            fprintf(stderr, "Failed to fork.\n");
         }
         return -1;
     }
@@ -177,6 +177,46 @@ static int patch_file(char * source_code, char * patch_file, int cli){
 
     return 0;   
 }
+
+
+
+//we will use the shoddy method of calling cp at the moment
+static int copy_resources(char * source, char * destination, int cli){
+    char * args[4];
+    args[0] = "cp";
+    args[1] = source;
+    args[2] = destination;
+    args[3] = NULL;
+    
+    if(access(source, R_OK) == -1){
+        if(cli){
+            fprintf(stderr, "Could not find source file %s\n", source);
+        }
+        return -1;
+    }
+
+    pid_t pid;
+    if((pid = fork()) == 0){
+        execvp(args[0], args);  
+    }
+    else if(pid == -1){
+        if(cli){
+            fprintf(stderr, "Failed to fork.\n");
+        }
+        return -1;
+    }
+    
+    int status;
+    waitpid(pid, &status, 0);
+
+    if(!WIFEXITED(status)){
+        return -1;
+    }
+
+    return 0;   
+}
+
+
 
 /************************************************************
  * Function for applying patch to afl. Mark cli (command    *
@@ -208,7 +248,7 @@ int patch_afl(char * afl_tar_path, int cli){
     //untar afl
     if(untar_afl(afl_tar_path, cli) == -1){
         if(cli){
-            fprintf(stderr, "Failed to untar afl");
+            fprintf(stderr, "Failed to untar afl\n");
         }
         return -1;
     }
@@ -218,22 +258,36 @@ int patch_afl(char * afl_tar_path, int cli){
     char * afl_makefile_source;
     asprintf(&afl_c_source,         "%s/%s", valid_version->version, "afl-fuzz.c");
     asprintf(&afl_makefile_source,  "%s/%s", valid_version->version, "Makefile");
-
     //patch c file
-    if(patch_file(afl_c_source, "/opt/afldff/afl-fuzz.patch", cli) == -1){
+    if(patch_file(afl_c_source, "/opt/afldff/patches/afl-fuzz.patch", cli) == -1){
         if(cli){
-            fprintf(stderr, "Failed to patch afl-fuzz.c");
+            fprintf(stderr, "Failed to patch afl-fuzz.c\n");
         }
         return -1;
     }   
     
     //patch Makefile
-    if(patch_file(afl_makefile_source, "/opt/afldff/Makefile.patch", cli) == -1){
+    if(patch_file(afl_makefile_source, "/opt/afldff/patches/Makefile.patch", cli) == -1){
         if(cli){
-            fprintf(stderr, "Failed to patch Makefile");
+            fprintf(stderr, "Failed to patch Makefile\n");
         }
         return -1;
     }
+
+
+    //copy the necissary source files to run the patched version of afl
+    if(copy_resources("/opt/afldff/afldff_networking.c", valid_version->version, cli) == -1){
+        if(cli){
+            fprintf(stderr, "Failed to copy afldff_networking.c\n");
+        }
+        return -1;
+    }
+    if(copy_resources("/opt/afldff/afldff_networking.h", valid_version->version, cli) == -1){
+        if(cli){
+            fprintf(stderr, "Failed to copy afldff_networking.h\n");
+        }
+        return -1;
+    }    
     
     free(afl_c_source);
     free(afl_makefile_source);
