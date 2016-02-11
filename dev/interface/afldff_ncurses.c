@@ -88,7 +88,7 @@ static void main_menu_right(WINDOW * window){
 
 //Update left window logic. If enter key was not pressed
 //return NULL. Otherwise return pointer to selected item.
-ITEM * main_menu_left(WINDOW * window, MENU * menu){
+static ITEM * main_menu_left(WINDOW * window, MENU * menu){
     int c = wgetch(window);
     switch(c){
         case KEY_DOWN:
@@ -111,7 +111,7 @@ ITEM * main_menu_left(WINDOW * window, MENU * menu){
 
 static char * left_main_menu_options[]={
     "View jobs",
-    "Collect crashes",
+    "Deploy jobs",
     "Apply patch",
     "Exit"
 };
@@ -236,8 +236,23 @@ static void apply_patch(){
 }
 
 
-static void view_jobs_left(WINDOW * left_win){
+static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu){
+    int c = wgetch(left_win);
+    switch(c){
+        case KEY_DOWN:
+            menu_driver(menu, REQ_DOWN_ITEM);
+            wrefresh(left_win);
+            break;
+        case KEY_UP:
+            menu_driver(menu, REQ_UP_ITEM);
+            wrefresh(left_win);
+            break;
+        case 10:
+            return current_item(menu);
+            break;
+    }
 
+    return NULL;
 }
 
 
@@ -264,13 +279,24 @@ static void view_jobs_right(WINDOW * right_win){
     wrefresh(right_win);
 }
 
+static char * left_view_jobs_options[]={
+    "Stop Job",
+    "Collect crashes",
+    "Main menu"
+};
 
 static void view_jobs(){
-    clear(); 
+    clear();
     refresh();
 
     WINDOW *left_win, *right_win;
     
+    //initialize color schemes 
+    init_pair(1, COLOR_BLUE, 0);
+    init_pair(2, COLOR_YELLOW, 0); 
+    init_pair(3, COLOR_RED, 0);
+ 
+
     //create windows
     left_win = newwin(terminal_y, 20, 0, 0);
     right_win = newwin(terminal_y, terminal_x - 20, 0, 20);
@@ -278,10 +304,39 @@ static void view_jobs(){
     box(right_win,0,0);
     wrefresh(left_win);
     wrefresh(right_win);
+    
 
+
+    MENU *my_menu;
+    int n_options;
+     
+    //Initialize an array of items to put in menu
+    n_options = sizeof(left_view_jobs_options)/sizeof(ITEM *);
+    ITEM ** my_items = calloc(n_options+1, sizeof(ITEM *)); 
+    for(int i = 0; i < n_options; i++){
+            my_items[i] = new_item(left_view_jobs_options[i], "");
+    }
+    
+    //initialize menu
+    my_menu = new_menu(my_items);
+    
+    //enable control for left_win    
+    keypad(left_win, TRUE);
+    nodelay(left_win, TRUE);
+  
+    // main/sub window
+    set_menu_win(my_menu, left_win);
+    set_menu_sub(my_menu, derwin(left_win, 6, 18, terminal_y/2 - n_options, 1));
+    set_menu_mark(my_menu, " * ");
+
+    //menu post
+    post_menu(my_menu);
+    wrefresh(left_win);
+       
+    
     while(1){
         view_jobs_right(right_win); 
-        view_jobs_left(left_win); 
+        view_jobs_left(left_win, my_menu); 
         
         usleep(10000);
     }
