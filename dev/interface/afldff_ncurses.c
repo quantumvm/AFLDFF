@@ -269,10 +269,13 @@ static void view_jobs_right(WINDOW * right_win){
     mvwprintw(right_win, 1, 1, message);
     
     message = "Group Name";
-    mvwprintw(right_win, 1, 1+(terminal_x-20)/3, message);   
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/4, message);   
     
     message = "Crashes";
-    mvwprintw(right_win, 1, 1+(terminal_x-20)/3 * 2, message);  
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 2, message);  
+    
+    message = "Tests";
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 3, message);
     
     view_jobs_right_list_jobs(right_win, 0);
 
@@ -298,8 +301,8 @@ static void view_jobs(){
  
 
     //create windows
-    left_win = newwin(terminal_y, 20, 0, 0);
-    right_win = newwin(terminal_y, terminal_x - 20, 0, 20);
+    left_win = newwin(terminal_y, 21, 0, 0);
+    right_win = newwin(terminal_y, terminal_x - 21, 0, 21);
     box(left_win,0,0);
     box(right_win,0,0);
     wrefresh(left_win);
