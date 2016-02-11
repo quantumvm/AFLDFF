@@ -21,6 +21,7 @@
 
 
 extern GQueue * NEW_NODE_QUEUE;
+extern GSList * GLOBAL_JOB_MATRIX;
 extern pthread_mutex_t q_mutex;
 extern pthread_mutex_t ll_mutex;
 
@@ -32,7 +33,7 @@ static size_t terminal_x = 80;
 static size_t terminal_y = 24;
 
 //Our state machine kept in the data segment
-enum afldff_state {MAIN_MENU, APPLY_PATCH, WOOPS};
+enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
 static void main_menu_bottom(WINDOW * window){
@@ -131,7 +132,7 @@ static void main_menu(){
     
     //Initialize an array of items to put in menu
     n_options = sizeof(left_main_menu_options)/sizeof(ITEM *);
-    ITEM ** my_items = (ITEM **)calloc(n_options+1, sizeof(ITEM *)); 
+    ITEM ** my_items = calloc(n_options+1, sizeof(ITEM *)); 
     for(int i = 0; i < n_options; i++){
             my_items[i] = new_item(left_main_menu_options[i], "");
     }
@@ -183,8 +184,8 @@ static void main_menu(){
             char * menu_selection = (char *) item_name(choice);
             //VIEW JOBS
             if(strcmp(menu_selection, left_main_menu_options[0]) == 0){ 
-                global_state = WOOPS;
-                return;
+                global_state = VIEW_JOBS;
+                break;
             }
             //COLLECT CRASHES
             else if(strcmp(menu_selection, left_main_menu_options[1]) == 0){
@@ -234,6 +235,65 @@ static void apply_patch(){
     return;
 }
 
+
+static void view_jobs_left(WINDOW * left_win){
+
+}
+
+
+static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
+    char * message = "Hello world";
+    
+    for(int i = 0; i < terminal_y/2; i++){
+        mvwprintw(right_win, 3+i, 1, message);   
+    }
+}
+
+static void view_jobs_right(WINDOW * right_win){
+    char *  message = "Status";
+    mvwprintw(right_win, 1, 1, message);
+    
+    message = "Group Name";
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/3, message);   
+    
+    message = "Crashes";
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/3 * 2, message);  
+    
+    view_jobs_right_list_jobs(right_win, 0);
+
+    wrefresh(right_win);
+}
+
+
+static void view_jobs(){
+    clear(); 
+    refresh();
+
+    WINDOW *left_win, *right_win;
+    
+    //create windows
+    left_win = newwin(terminal_y, 20, 0, 0);
+    right_win = newwin(terminal_y, terminal_x - 20, 0, 20);
+    box(left_win,0,0);
+    box(right_win,0,0);
+    wrefresh(left_win);
+    wrefresh(right_win);
+
+    while(1){
+        view_jobs_right(right_win); 
+        view_jobs_left(left_win); 
+        
+        usleep(10000);
+    }
+    
+
+    getchar();
+
+
+    global_state = MAIN_MENU;
+    return;   
+}
+
 static void woops(){
     char error_message[] = "Woops! your not suppose to be here!";
     
@@ -259,6 +319,7 @@ void draw_afldff_interface(){
         switch(global_state){
             case MAIN_MENU: main_menu(); break;
             case APPLY_PATCH: apply_patch(); break;
+            case VIEW_JOBS: view_jobs(); break;
             case WOOPS: woops(); break;
 
         }
