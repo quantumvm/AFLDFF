@@ -43,7 +43,7 @@ command_args flags;
 GSList * GLOBAL_JOB_MATRIX = NULL;
 //mutex for accessing linked list
 pthread_mutex_t ll_mutex;
-
+pthread_mutexattr_t ll_mutex_attr;
 
 GQueue * NEW_NODE_QUEUE = NULL;
 //mutex for accessing queue
@@ -178,6 +178,8 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
+
+
 //Create queue mutex and initialize queue data structure
     NEW_NODE_QUEUE = g_queue_new(); 
     if(pthread_mutex_init(&q_mutex, NULL)!=0){
@@ -185,8 +187,22 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);       
     }
 
-//Start up the udp listener and initialize mutex
-    if(pthread_mutex_init(&ll_mutex, NULL)!=0){
+
+    
+//Start up the udp listener and initialize GLOBAL_JOB_MATRIX mutex
+    
+    //set up ll_mutex to use recursive a recursive mutex
+    if(pthread_mutexattr_init(&ll_mutex_attr)!=0){
+        fprintf(stderr,"Failed to create ll_mutex attribute\n");
+        exit(EXIT_FAILURE);       
+    }
+    
+    if(pthread_mutexattr_settype(&ll_mutex_attr, PTHREAD_MUTEX_RECURSIVE)!=0){
+        fprintf(stderr,"Failed to set ll_mutex attribute\n");
+        exit(EXIT_FAILURE);       
+    }
+
+    if(pthread_mutex_init(&ll_mutex, &ll_mutex_attr)!=0){
         fprintf(stderr,"Failed to create mutex\n");
         exit(EXIT_FAILURE);       
     }   

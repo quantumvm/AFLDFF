@@ -19,6 +19,7 @@
 
 #include "../networking/afldff_networking.h"
 
+#include "../../afl-dff.h"
 
 extern GQueue * NEW_NODE_QUEUE;
 extern GSList * GLOBAL_JOB_MATRIX;
@@ -256,12 +257,66 @@ static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu){
 }
 
 
+
+
+
+//not thread safe get total jobs
+static size_t get_total_jobs(GSList * start){
+    size_t counter = 0;
+    for(; start; start=start->next){
+        counter++;
+    }
+    return counter; 
+}
+
+static char * hash_to_string(unsigned char * hash){
+    char * hash_string = calloc(1,32+1);
+
+    for(int i=0; i<16;i++){
+        sprintf(&hash_string[i*2], "%02x", hash[i]);
+    }
+
+    hash_string[32] = '\x00';
+    
+    return hash_string;
+}
+
+
 static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
     char * message = "Hello world";
     
-    for(int i = 0; i < terminal_y/2; i++){
-        mvwprintw(right_win, 3+i, 1, message);   
-    }
+    pthread_mutex_lock(&ll_mutex);
+
+        size_t max_display = terminal_y/2;
+
+        //statement below looks redundent but used to truncate elements max_display
+        int start_element = max_display*(selected_element/max_display);
+
+        for(int i = start_element; (i < (start_element+max_display)) && (i<get_total_jobs(GLOBAL_JOB_MATRIX)); i++){
+            GSList * job_group =  g_slist_nth(GLOBAL_JOB_MATRIX, i);
+           
+            //color the currently selected job blue (Change this to highlight later?)
+            if(i == selected_element){
+                wattron(right_win, COLOR_PAIR(1));
+            }
+            
+
+            job_node * job = job_group->data;
+            char * hash = hash_to_string((unsigned char *)job->hash);
+
+            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); //get_test_cases_by_job(job_group));
+            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 2, "%lld", get_crash_cases_by_job(job->packet_info_list));
+            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 3, "%lld", get_test_cases_by_job(job->packet_info_list));
+            
+            free(hash);
+
+            if(i == selected_element){
+                wattroff(right_win, COLOR_PAIR(1));
+            }
+
+        }
+    pthread_mutex_unlock(&ll_mutex);
+
 }
 
 static void view_jobs_right(WINDOW * right_win){
@@ -269,7 +324,7 @@ static void view_jobs_right(WINDOW * right_win){
     mvwprintw(right_win, 1, 1, message);
     
     message = "Group Name";
-    mvwprintw(right_win, 1, 1+(terminal_x-20)/4, message);   
+    mvwprintw(right_win, 1, 1+(terminal_x-20)/4 - 6, message);   
     
     message = "Crashes";
     mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 2, message);  

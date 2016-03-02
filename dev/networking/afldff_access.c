@@ -9,7 +9,7 @@
 extern pthread_mutex_t ll_mutex;
 extern GSList * GLOBAL_JOB_MATRIX;
 
-long long get_test_case(unsigned int id ){
+long long get_test_case_by_id(unsigned int id ){
     long long test_cases;
 
     pthread_mutex_lock(&ll_mutex);
@@ -31,7 +31,7 @@ long long get_test_case(unsigned int id ){
     return -1;
 }
 
-long long get_crash_case(unsigned int id){
+long long get_crash_case_by_id(unsigned int id){
     long long crash_cases;
 
     pthread_mutex_lock(&ll_mutex);
@@ -88,8 +88,44 @@ long long get_all_test_cases(){
     pthread_mutex_unlock(&ll_mutex);
     return test_cases;
 
-
 }
 
+long long get_total_jobs(GSList * start){
+    long long counter = 0;
+    
+    pthread_mutex_lock(&ll_mutex);
+    
+    for(; start; start=start->next){
+        counter++;
+    }
+    return counter;
 
+    pthread_mutex_unlock(&ll_mutex);
+}
+
+long long get_crash_cases_by_job(GSList * job){
+    long long crashes = 0;
+    
+    pthread_mutex_lock(&ll_mutex);
+        for(GSList * jlp=job; jlp; jlp=jlp->next){
+            packet_info * pinfo = jlp->data;
+            crashes += pinfo->p->crashes;
+        }
+    pthread_mutex_unlock(&ll_mutex);
+    
+    return crashes;
+}
+
+long long get_test_cases_by_job(GSList * job){
+    long long test_cases = 0;
+
+    pthread_mutex_lock(&ll_mutex);
+        for(GSList * jlp=job; jlp; jlp=jlp->next){
+            packet_info * pinfo = jlp->data;
+            test_cases += pinfo->p->test_cases;
+        }
+    pthread_mutex_unlock(&ll_mutex);
+    
+    return test_cases;
+}
 
