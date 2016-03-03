@@ -50,11 +50,19 @@ static void main_menu_bottom(WINDOW * window){
         
         struct tm * time_info;
         time_info = localtime(&pi->time_joined);
+        
+        char * asc;
+        if((asc = asctime(time_info)) != NULL){
 
         wprintw(window,"New node %d has joined from %s at %s", 
                 pi->p->instance_id, 
                 source_ip, 
-                asctime(time_info));
+                asc);
+
+        }else{
+            fprintf(stderr, "Failed to get time");
+            exit(1);
+        }
         
         //free(hash);
     }
@@ -188,7 +196,7 @@ static void main_menu(){
                 global_state = VIEW_JOBS;
                 break;
             }
-            //COLLECT CRASHES
+            //DEPLOY JOBS
             else if(strcmp(menu_selection, left_main_menu_options[1]) == 0){
                 global_state = WOOPS;
                 return;
@@ -221,9 +229,13 @@ static void main_menu(){
             free_item(my_items[i]);
     }
     delwin(left_win);
+    left_win = NULL;
     delwin(right_win);
+    right_win = NULL;
     delwin(bottom_win);
+    bottom_win = NULL;
     delwin(bottom_win_box);
+    bottom_win_box = NULL;
 }
 
 static void apply_patch(){
@@ -236,6 +248,20 @@ static void apply_patch(){
     return;
 }
 
+
+
+/************************************************
+ *                                              *
+ *                  VIEW JOBS                   *
+ *                                              *
+ * **********************************************/
+
+
+static char * left_view_jobs_options[]={
+    "Stop Job",
+    "Collect crashes",
+    "Main menu"
+};
 
 static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu){
     int c = wgetch(left_win);
@@ -255,10 +281,6 @@ static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu){
 
     return NULL;
 }
-
-
-
-
 
 //not thread safe get total jobs
 static size_t get_total_jobs(GSList * start){
@@ -283,7 +305,6 @@ static char * hash_to_string(unsigned char * hash){
 
 
 static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
-    char * message = "Hello world";
     
     pthread_mutex_lock(&ll_mutex);
 
@@ -337,11 +358,6 @@ static void view_jobs_right(WINDOW * right_win){
     wrefresh(right_win);
 }
 
-static char * left_view_jobs_options[]={
-    "Stop Job",
-    "Collect crashes",
-    "Main menu"
-};
 
 static void view_jobs(){
     clear();
@@ -365,7 +381,7 @@ static void view_jobs(){
     
 
 
-    MENU *my_menu;
+    MENU * my_menu;
     int n_options;
      
     //Initialize an array of items to put in menu
@@ -393,17 +409,46 @@ static void view_jobs(){
        
     
     while(1){
+        ITEM * choice = view_jobs_left(left_win, my_menu); 
+
         view_jobs_right(right_win); 
         view_jobs_left(left_win, my_menu); 
         
+        if(choice != NULL){
+            char * menu_selection = (char *) item_name(choice);
+            //STOP JOB
+            if(strcmp(menu_selection, left_view_jobs_options[0]) == 0){ 
+                global_state = VIEW_JOBS;
+                break;
+            }
+            //COLLECT CRASHES
+            else if(strcmp(menu_selection, left_view_jobs_options[1]) == 0){
+                global_state = WOOPS;
+                return;
+            }
+            //MAIN MENU
+            else if(strcmp(menu_selection, left_view_jobs_options[2]) == 0){
+                global_state = MAIN_MENU;
+                break;
+            }
+            else{
+                global_state = WOOPS;
+                return;
+            }
+        
+        }
         usleep(10000);
     }
     
+    /* Unpost and free all the memory taken up */
+    unpost_menu(my_menu);
+    free_menu(my_menu);
+    for(int i = 0; i < n_options; ++i){
+            free_item(my_items[i]);
+    }
+    delwin(left_win);
+    delwin(right_win);
 
-    getchar();
-
-
-    global_state = MAIN_MENU;
     return;   
 }
 
