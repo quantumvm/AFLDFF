@@ -16,10 +16,11 @@
 #include <arpa/inet.h>
 
 #include "../networking/afldff_access.h"
-
 #include "../networking/afldff_networking.h"
-
 #include "../../afl-dff.h"
+
+#define LEFT 0
+#define RIGHT 1
 
 extern GQueue * NEW_NODE_QUEUE;
 extern GSList * GLOBAL_JOB_MATRIX;
@@ -240,8 +241,7 @@ static char * left_view_jobs_options[]={
     "Main menu"
 };
 
-static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu){
-    int c = wgetch(left_win);
+static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu, int c){
     switch(c){
         case KEY_DOWN:
             menu_driver(menu, REQ_DOWN_ITEM);
@@ -281,7 +281,7 @@ static char * hash_to_string(unsigned char * hash){
 }
 
 
-static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
+static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int active_window){
     
     pthread_mutex_lock(&ll_mutex);
 
@@ -294,7 +294,7 @@ static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
             GSList * job_group =  g_slist_nth(GLOBAL_JOB_MATRIX, i);
            
             //color the currently selected job blue (Change this to highlight later?)
-            if(i == selected_element){
+            if((i == selected_element) && active_window){
                 wattron(right_win, COLOR_PAIR(1));
             }
             
@@ -302,13 +302,13 @@ static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
             job_node * job = job_group->data;
             char * hash = hash_to_string((unsigned char *)job->hash);
 
-            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); //get_test_cases_by_job(job_group));
+            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); 
             mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 2, "%lld", get_crash_cases_by_job(job->packet_info_list));
             mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 3, "%lld", get_test_cases_by_job(job->packet_info_list));
             
             free(hash);
 
-            if(i == selected_element){
+            if((i == selected_element) && active_window){
                 wattroff(right_win, COLOR_PAIR(1));
             }
 
@@ -317,7 +317,7 @@ static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element){
 
 }
 
-static void view_jobs_right(WINDOW * right_win){
+static void view_jobs_right(WINDOW * right_win, int selected_element, int window_is_active){
     char *  message = "Status";
     mvwprintw(right_win, 1, 1, message);
     
@@ -330,7 +330,7 @@ static void view_jobs_right(WINDOW * right_win){
     message = "Tests";
     mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 3, message);
     
-    view_jobs_right_list_jobs(right_win, 0);
+    view_jobs_right_list_jobs(right_win, selected_element, window_is_active);
 
     wrefresh(right_win);
 }
@@ -355,8 +355,6 @@ static void view_jobs(){
     box(right_win,0,0);
     wrefresh(left_win);
     wrefresh(right_win);
-    
-
 
     MENU * my_menu;
     int n_options;
@@ -371,10 +369,11 @@ static void view_jobs(){
     //initialize menu
     my_menu = new_menu(my_items);
     
-    //enable control for left_win    
+    //enable control for left_win and right_win 
     keypad(left_win, TRUE);
     nodelay(left_win, TRUE);
-  
+    nodelay(right_win, TRUE);
+
     // main/sub window
     set_menu_win(my_menu, left_win);
     set_menu_sub(my_menu, derwin(left_win, 6, 18, terminal_y/2 - n_options, 1));
@@ -384,13 +383,48 @@ static void view_jobs(){
     post_menu(my_menu);
     wrefresh(left_win);
        
+    int selected_panel = LEFT; 
+    int right_selected_item = 0;
+    ITEM * choice = NULL; 
     
     while(1){
-        ITEM * choice = view_jobs_left(left_win, my_menu); 
-
-        view_jobs_right(right_win); 
-        view_jobs_left(left_win, my_menu); 
         
+/*        if(c == KEY_LEFT){
+            selected_panel = LEFT;
+        }
+
+        if(c == KEY_RIGHT){
+            selected_panel = RIGHT;
+        }
+*/
+        
+        if(selected_panel == LEFT){ 
+            int c = wgetch(left_win);
+            right_selected_item = 0;
+
+            if(c == KEY_RIGHT){
+                keypad(left_win, FALSE);
+                keypad(right_win, TRUE);
+                selected_panel = RIGHT;
+            }
+            choice = view_jobs_left(left_win, my_menu, c);
+        }
+        
+        if(selected_panel == RIGHT){
+            int c = wgetch(right_win);     
+            right_selected_item = 1; 
+
+            if(c == KEY_LEFT){
+                keypad(right_win, FALSE);
+                keypad(left_win, TRUE);
+                selected_panel = LEFT;
+            }
+            
+        }
+
+        view_jobs_right(right_win, 0, right_selected_item); 
+        
+
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
             //STOP JOB
