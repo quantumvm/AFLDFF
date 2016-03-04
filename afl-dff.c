@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -105,7 +106,20 @@ void * start_server(void *ptr){
                 job->packet_info_list = g_slist_append(job->packet_info_list, pi);
                 
                 pthread_mutex_lock(&q_mutex);
-                    g_queue_push_head(NEW_NODE_QUEUE, pi);
+                    
+                    struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
+                    char * source_ip = inet_ntoa(sockin->sin_addr);
+                    
+                    struct tm * time_info;
+                    time_info = localtime(&pi->time_joined);
+                    
+                    char * message;
+                    asprintf(&message, "New node %d has joined from %s at %s", 
+                             pi->p->instance_id,
+                             source_ip,
+                             asctime(time_info));
+                    
+                    g_queue_push_head(NEW_NODE_QUEUE, message);
                 pthread_mutex_unlock(&q_mutex);
                 
             }

@@ -38,36 +38,13 @@ enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
 static void main_menu_bottom(WINDOW * window){
-    pthread_mutex_lock(&ll_mutex);
     pthread_mutex_lock(&q_mutex);
     if(!g_queue_is_empty(NEW_NODE_QUEUE)){
-        packet_info * pi = g_queue_pop_head(NEW_NODE_QUEUE);
-        
-        //char * hash = hash_to_string(pi->p->hash);
-        
-        struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
-        char * source_ip = inet_ntoa(sockin->sin_addr);
-        
-        struct tm * time_info;
-        time_info = localtime(&pi->time_joined);
-        
-        char * asc;
-        if((asc = asctime(time_info)) != NULL){
-
-        wprintw(window,"New node %d has joined from %s at %s", 
-                pi->p->instance_id, 
-                source_ip, 
-                asc);
-
-        }else{
-            fprintf(stderr, "Failed to get time");
-            exit(1);
-        }
-        
-        //free(hash);
+        char * message = g_queue_pop_head(NEW_NODE_QUEUE);
+        wprintw(window,"%s", message);
+        free(message);
     }
     pthread_mutex_unlock(&q_mutex);
-    pthread_mutex_unlock(&ll_mutex);
     wrefresh(window);
 
 }

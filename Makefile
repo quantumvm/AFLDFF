@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=gnu99 #-fsanitize=address
+CFLAGS = -Wall -std=gnu99 -fsanitize=address
 PKG = `pkg-config --cflags --libs glib-2.0` -pthread -lmenu -lncurses -lpanel -lssl -lcrypto
 
 default: main
