@@ -259,12 +259,13 @@ static ITEM * view_jobs_left(WINDOW * left_win, MENU * menu, int c){
     return NULL;
 }
 
-//not thread safe get total jobs
 static size_t get_total_jobs(GSList * start){
-    size_t counter = 0;
-    for(; start; start=start->next){
-        counter++;
-    }
+    pthread_mutex_lock(&ll_mutex);
+        size_t counter = 0;
+        for(; start; start=start->next){
+            counter++;
+        }
+    pthread_mutex_unlock(&ll_mutex);
     return counter; 
 }
 
@@ -385,23 +386,15 @@ static void view_jobs(){
        
     int selected_panel = LEFT; 
     int right_selected_item = 0;
+    int right_panel_active = 0;
+    int ll_elements = 0;
     ITEM * choice = NULL; 
     
     while(1){
         
-/*        if(c == KEY_LEFT){
-            selected_panel = LEFT;
-        }
-
-        if(c == KEY_RIGHT){
-            selected_panel = RIGHT;
-        }
-*/
-        
         if(selected_panel == LEFT){ 
             int c = wgetch(left_win);
-            right_selected_item = 0;
-
+            right_panel_active = 0;
             if(c == KEY_RIGHT){
                 keypad(left_win, FALSE);
                 keypad(right_win, TRUE);
@@ -411,19 +404,33 @@ static void view_jobs(){
         }
         
         if(selected_panel == RIGHT){
-            int c = wgetch(right_win);     
-            right_selected_item = 1; 
+            int c = wgetch(right_win);
+            right_panel_active = 1;
+            //right_selected_item = 1; 
 
             if(c == KEY_LEFT){
                 keypad(right_win, FALSE);
                 keypad(left_win, TRUE);
                 selected_panel = LEFT;
             }
-            
+
+            pthread_mutex_lock(&ll_mutex);
+                ll_elements = get_total_jobs(GLOBAL_JOB_MATRIX); 
+                
+                if((c == KEY_DOWN) && (right_selected_item < (ll_elements-1))){
+                    right_selected_item++;
+                }
+                
+            pthread_mutex_unlock(&ll_mutex);
+
+            if((c == KEY_UP) && (right_selected_item > 0)){
+                right_selected_item--;
+            }
+
+
         }
 
-        view_jobs_right(right_win, 0, right_selected_item); 
-        
+        view_jobs_right(right_win, right_selected_item, right_panel_active); 
 
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
