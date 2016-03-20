@@ -324,8 +324,8 @@ void print_packet(void * structure, int line, WINDOW * window){
     packet * p = pi->p;
 
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%d", p->instance_id); 
-    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", p->test_cases);
-    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", p->crashes);
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", p->crashes);
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", p->test_cases);
 }
 
 static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int active_window){
