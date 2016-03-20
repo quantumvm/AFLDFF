@@ -509,7 +509,7 @@ static void view_jobs(){
             }
 
 
-            if((c == KEY_DOWN) && (right_selected_item < last_queue_elements)){
+            if((c == KEY_DOWN) && (right_selected_item < (last_queue_elements-1))){
                 right_selected_item++;
             }
             
