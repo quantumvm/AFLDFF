@@ -103,6 +103,19 @@ long long get_total_jobs(GSList * start){
     pthread_mutex_unlock(&ll_mutex);
 }
 
+long long get_total_packets_open_job(GSList * start){
+    long long counter = 0;
+    
+    pthread_mutex_lock(&ll_mutex);
+    
+    for(; start; start=start->next){
+        counter++;
+    }
+    return counter;
+
+    pthread_mutex_unlock(&ll_mutex);
+}
+
 long long get_crash_cases_by_job(GSList * job){
     long long crashes = 0;
     

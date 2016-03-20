@@ -17,6 +17,7 @@ typedef struct packet_info{
     socklen_t addrlen;
     struct sockaddr src_addr;
     time_t time_joined;
+    int is_selected;
 }packet_info;
 
 int get_udp_server(char * ip, char * port);

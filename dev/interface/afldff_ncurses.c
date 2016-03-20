@@ -282,43 +282,135 @@ static char * hash_to_string(unsigned char * hash){
 }
 
 
-static void view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int active_window){
+
+
+//Doing some janky stuff here that mimics object oriented programing.
+//Object pushed onto the menu queue are of type menu queue handler.
+//structure in menu_queue_handler is either a job_node or a packet 
+//info structure. The handler lets us set the item in the structure
+//appropriately.
+
+struct menu_queue_handler{
+    void * structure;
+    void (*set)(void * structure, int set);
+    void (*print)(void * structure, int line, WINDOW * window);
+};
+
+void set_job(void * structure, int set){
+    job_node * job = structure;
+    job->is_open = set;
+}
+
+void print_job(void * structure, int line, WINDOW * window){
+
+    job_node * job = structure;
+    char * hash = hash_to_string((unsigned char *)job->hash);
+    
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); 
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", get_crash_cases_by_job(job->packet_info_list));
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", get_test_cases_by_job(job->packet_info_list));
+    free(hash);
+    
+}
+
+void set_packet(void * structure, int set){
+    packet_info * pi = structure;
+    pi->is_selected = set;
+}
+
+void print_packet(void * structure, int line, WINDOW * window){
+ 
+    packet_info * pi = structure;
+    packet * p = pi->p;
+
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%d", p->instance_id); 
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", p->test_cases);
+    mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", p->crashes);
+}
+
+static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int active_window){
+    
+    
+    size_t max_display = terminal_y/2;
     
     pthread_mutex_lock(&ll_mutex);
+        
+        GQueue * menu_queue = g_queue_new();
 
-        size_t max_display = terminal_y/2;
 
+        for(int i = 0; i < get_total_jobs(GLOBAL_JOB_MATRIX); i++){
+            GSList * job_group = g_slist_nth(GLOBAL_JOB_MATRIX, i);
+            
+            //TEST CASE DELETE ME
+                job_node * testme = job_group->data;
+                testme->is_open = 1;
+
+            //set the job handler
+            struct menu_queue_handler * mqhj = calloc(1, sizeof(struct menu_queue_handler));
+            mqhj->structure = job_group->data;
+            mqhj->set = set_job;
+            mqhj->print = print_job;
+            g_queue_push_tail(menu_queue, mqhj);
+
+            //set the packet_handler
+            job_node * current_job = mqhj->structure;
+            if(current_job->is_open == 1){
+                for(GSList * gslp = current_job->packet_info_list; gslp; gslp=gslp->next){
+                    struct menu_queue_handler * mqhp = calloc(1, sizeof(struct menu_queue_handler));
+                    mqhp->structure = gslp->data;
+                    mqhp->set = set_packet;
+                    mqhp->print = print_packet;
+                    g_queue_push_tail(menu_queue, mqhp);
+                }
+            }
+
+        }
+        
+        
         //statement below looks redundent but used to truncate elements max_display
         int start_element = max_display*(selected_element/max_display);
 
-        for(int i = start_element; (i < (start_element+max_display)) && (i<get_total_jobs(GLOBAL_JOB_MATRIX)); i++){
-            GSList * job_group =  g_slist_nth(GLOBAL_JOB_MATRIX, i);
-           
+        for(int i = start_element; (i < (start_element+max_display)); i++){
+            
+            struct menu_queue_handler * queue_item =  g_queue_peek_nth(menu_queue, i);
+            
+            if(queue_item == NULL){
+                break;
+            }
+            
             //color the currently selected job blue (Change this to highlight later?)
             if((i == selected_element) && active_window){
                 wattron(right_win, COLOR_PAIR(1));
             }
             
-
-            job_node * job = job_group->data;
-            char * hash = hash_to_string((unsigned char *)job->hash);
-
-            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); 
-            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 2, "%lld", get_crash_cases_by_job(job->packet_info_list));
-            mvwprintw(right_win, 3+i, 1+(terminal_x-20)/4 * 3, "%lld", get_test_cases_by_job(job->packet_info_list));
-            
-            free(hash);
+            queue_item->print(queue_item->structure, i, right_win);  
 
             if((i == selected_element) && active_window){
                 wattroff(right_win, COLOR_PAIR(1));
             }
 
         }
+
     pthread_mutex_unlock(&ll_mutex);
+        
+    //free all the menu_queue_handler structures and return
+    //the number of items pushed onto the queue
+    
+    int queue_items=0;
+    for(struct menu_queue_handler * mqh = g_queue_pop_head(menu_queue); mqh; mqh = g_queue_pop_head(menu_queue)){
+        queue_items++;
+        free(mqh);
+    }
+
+
+    return queue_items;
 
 }
 
-static void view_jobs_right(WINDOW * right_win, int selected_element, int window_is_active){
+static int view_jobs_right(WINDOW * right_win, int selected_element, int window_is_active){
+    
+    werase(right_win);
+    
     char *  message = "Status";
     mvwprintw(right_win, 1, 1, message);
     
@@ -331,9 +423,10 @@ static void view_jobs_right(WINDOW * right_win, int selected_element, int window
     message = "Tests";
     mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 3, message);
     
-    view_jobs_right_list_jobs(right_win, selected_element, window_is_active);
+    int job_items = view_jobs_right_list_jobs(right_win, selected_element, window_is_active);
 
     wrefresh(right_win);
+    return job_items;
 }
 
 
@@ -387,9 +480,10 @@ static void view_jobs(){
     int selected_panel = LEFT; 
     int right_selected_item = 0;
     int right_panel_active = 0;
-    int ll_elements = 0;
+    int last_queue_elements = 0;
     ITEM * choice = NULL; 
     
+
     while(1){
         
         if(selected_panel == LEFT){ 
@@ -414,14 +508,11 @@ static void view_jobs(){
                 selected_panel = LEFT;
             }
 
-            pthread_mutex_lock(&ll_mutex);
-                ll_elements = get_total_jobs(GLOBAL_JOB_MATRIX); 
-                
-                if((c == KEY_DOWN) && (right_selected_item < (ll_elements-1))){
-                    right_selected_item++;
-                }
-                
-            pthread_mutex_unlock(&ll_mutex);
+
+            if((c == KEY_DOWN) && (right_selected_item < last_queue_elements)){
+                right_selected_item++;
+            }
+            
 
             if((c == KEY_UP) && (right_selected_item > 0)){
                 right_selected_item--;
@@ -430,7 +521,7 @@ static void view_jobs(){
 
         }
 
-        view_jobs_right(right_win, right_selected_item, right_panel_active); 
+        last_queue_elements = view_jobs_right(right_win, right_selected_item, right_panel_active); 
 
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
