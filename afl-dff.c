@@ -95,9 +95,14 @@ void * start_server(void *ptr){
             for(; pilp; pilp=pilp->next){
                 packet_info * data = pilp->data;
                 if(data->p->instance_id == pi->p->instance_id){
-                     free_packet_info(pilp->data);
-                     pilp->data = pi;
-                     break;
+                     
+                    if(data->is_selected){
+                        pi->is_selected = 1;
+                    }
+                    
+                    free_packet_info(pilp->data);
+                    pilp->data = pi;
+                    break;
                 }
             }
             
