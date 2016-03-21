@@ -292,13 +292,13 @@ static char * hash_to_string(unsigned char * hash){
 
 struct menu_queue_handler{
     void * structure;
-    void (*set)(void * structure, int set);
+    void (*toggle)(void * structure);
     void (*print)(void * structure, int line, WINDOW * window);
 };
 
-void set_job(void * structure, int set){
+void toggle_job(void * structure){
     job_node * job = structure;
-    job->is_open = set;
+    job->is_open = job->is_open ? 0:1;
 }
 
 void print_job(void * structure, int line, WINDOW * window){
@@ -313,42 +313,53 @@ void print_job(void * structure, int line, WINDOW * window){
     
 }
 
-void set_packet(void * structure, int set){
+void toggle_packet(void * structure){
     packet_info * pi = structure;
-    pi->is_selected = set;
+    pi->is_selected = pi->is_selected ? 0:1;
 }
 
 void print_packet(void * structure, int line, WINDOW * window){
  
     packet_info * pi = structure;
     packet * p = pi->p;
+    
+    if(pi->is_selected){
+        wattron(window, COLOR_PAIR(3));
+    }
 
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%d", p->instance_id); 
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", p->crashes);
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", p->test_cases);
+
+    if(pi->is_selected){
+        wattroff(window, COLOR_PAIR(3));
+    }
+
 }
 
-static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int active_window){
+static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int keyboard_input, int active_window){
     
     
     size_t max_display = terminal_y/2;
     
     pthread_mutex_lock(&ll_mutex);
         
-        GQueue * menu_queue = g_queue_new();
+/*********************************
+ *Build menu queue               *
+ *********************************/
 
+        GQueue * menu_queue = g_queue_new();
 
         for(int i = 0; i < get_total_jobs(GLOBAL_JOB_MATRIX); i++){
             GSList * job_group = g_slist_nth(GLOBAL_JOB_MATRIX, i);
-            
-            //TEST CASE DELETE ME
-                job_node * testme = job_group->data;
-                testme->is_open = 1;
+            //FIXME TEST CASE DELETE ME
+            //    job_node * testme = job_group->data;
+            //    testme->is_open = 1;
 
             //set the job handler
             struct menu_queue_handler * mqhj = calloc(1, sizeof(struct menu_queue_handler));
             mqhj->structure = job_group->data;
-            mqhj->set = set_job;
+            mqhj->toggle = toggle_job;
             mqhj->print = print_job;
             g_queue_push_tail(menu_queue, mqhj);
 
@@ -358,7 +369,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
                 for(GSList * gslp = current_job->packet_info_list; gslp; gslp=gslp->next){
                     struct menu_queue_handler * mqhp = calloc(1, sizeof(struct menu_queue_handler));
                     mqhp->structure = gslp->data;
-                    mqhp->set = set_packet;
+                    mqhp->toggle = toggle_packet;
                     mqhp->print = print_packet;
                     g_queue_push_tail(menu_queue, mqhp);
                 }
@@ -366,7 +377,10 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
 
         }
         
-        
+/*********************************
+ *Handle printing                *
+ *********************************/
+
         //statement below looks redundent but used to truncate elements max_display
         int start_element = max_display*(selected_element/max_display);
 
@@ -390,6 +404,19 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
             }
 
         }
+        
+
+/*********************************
+ *Check for right menu selection *
+ *********************************/
+        if(active_window){
+            if(keyboard_input == '\n'){
+                struct menu_queue_handler * queue_item =  g_queue_peek_nth(menu_queue, selected_element);
+                queue_item->toggle(queue_item->structure);
+            }
+
+        }
+
 
     pthread_mutex_unlock(&ll_mutex);
         
@@ -407,7 +434,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
 
 }
 
-static int view_jobs_right(WINDOW * right_win, int selected_element, int window_is_active){
+static int view_jobs_right(WINDOW * right_win, int selected_element, int keyboard_input, int window_is_active){
     
     werase(right_win);
     
@@ -423,7 +450,7 @@ static int view_jobs_right(WINDOW * right_win, int selected_element, int window_
     message = "Tests";
     mvwprintw(right_win, 1, 1+(terminal_x-20)/4 * 3, message);
     
-    int job_items = view_jobs_right_list_jobs(right_win, selected_element, window_is_active);
+    int job_items = view_jobs_right_list_jobs(right_win, selected_element, keyboard_input, window_is_active);
 
     wrefresh(right_win);
     return job_items;
@@ -485,9 +512,10 @@ static void view_jobs(){
     
 
     while(1){
-        
+        int c;
+
         if(selected_panel == LEFT){ 
-            int c = wgetch(left_win);
+            c = wgetch(left_win);
             right_panel_active = 0;
             if(c == KEY_RIGHT){
                 keypad(left_win, FALSE);
@@ -498,7 +526,7 @@ static void view_jobs(){
         }
         
         if(selected_panel == RIGHT){
-            int c = wgetch(right_win);
+            c = wgetch(right_win);
             right_panel_active = 1;
             //right_selected_item = 1; 
 
@@ -521,7 +549,7 @@ static void view_jobs(){
 
         }
 
-        last_queue_elements = view_jobs_right(right_win, right_selected_item, right_panel_active); 
+        last_queue_elements = view_jobs_right(right_win, right_selected_item, c, right_panel_active); 
 
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
