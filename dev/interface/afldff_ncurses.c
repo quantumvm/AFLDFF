@@ -437,7 +437,8 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
 static int view_jobs_right(WINDOW * right_win, int selected_element, int keyboard_input, int window_is_active){
     
     werase(right_win);
-    
+    box(right_win, 0, 0);
+
     char *  message = "Status";
     mvwprintw(right_win, 1, 1, message);
     
