@@ -39,11 +39,11 @@ enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
 static void main_menu_bottom(WINDOW * window){
+    werase(window);
     pthread_mutex_lock(&q_mutex);
-    if(!g_queue_is_empty(NEW_NODE_QUEUE)){
-        char * message = g_queue_pop_head(NEW_NODE_QUEUE);
+    for(int i = 0; i<g_queue_get_length(NEW_NODE_QUEUE); i++){
+        char * message = g_queue_peek_nth(NEW_NODE_QUEUE, i);
         wprintw(window,"%s", message);
-        free(message);
     }
     pthread_mutex_unlock(&q_mutex);
     wrefresh(window);
