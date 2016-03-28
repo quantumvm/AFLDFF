@@ -293,7 +293,7 @@ static char * hash_to_string(unsigned char * hash){
 struct menu_queue_handler{
     void * structure;
     void (*toggle)(void * structure);
-    void (*print)(void * structure, int line, WINDOW * window);
+    void (*print)(void * structure, int line, int selected_element, WINDOW * window);
 };
 
 void toggle_job(void * structure){
@@ -301,7 +301,7 @@ void toggle_job(void * structure){
     job->is_open = job->is_open ? 0:1;
 }
 
-void print_job(void * structure, int line, WINDOW * window){
+void print_job(void * structure, int line, int selected_element, WINDOW * window){
 
     job_node * job = structure;
     char * hash = hash_to_string((unsigned char *)job->hash);
@@ -318,12 +318,12 @@ void toggle_packet(void * structure){
     pi->is_selected = pi->is_selected ? 0:1;
 }
 
-void print_packet(void * structure, int line, WINDOW * window){
+void print_packet(void * structure, int line, int selected_element, WINDOW * window){
  
     packet_info * pi = structure;
     packet * p = pi->p;
     
-    if(pi->is_selected){
+    if(pi->is_selected && (line!=selected_element)){
         wattron(window, COLOR_PAIR(3));
     }
 
@@ -397,7 +397,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
                 wattron(right_win, COLOR_PAIR(1));
             }
             
-            queue_item->print(queue_item->structure, i, right_win);  
+            queue_item->print(queue_item->structure, i, selected_element, right_win);  
 
             if((i == selected_element) && active_window){
                 wattroff(right_win, COLOR_PAIR(1));
