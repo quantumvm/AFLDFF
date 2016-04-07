@@ -323,8 +323,13 @@ void print_packet(void * structure, int line, int selected_element, WINDOW * win
     packet_info * pi = structure;
     packet * p = pi->p;
     
+
     if(pi->is_selected && (line!=selected_element)){
         wattron(window, COLOR_PAIR(3));
+    }
+
+    if(pi->is_selected){
+        mvwprintw(window, 3+line, 2, "S"); 
     }
 
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%d", p->instance_id); 
@@ -535,6 +540,7 @@ static void view_jobs(){
                 keypad(right_win, FALSE);
                 keypad(left_win, TRUE);
                 selected_panel = LEFT;
+                right_selected_item = 0;
             }
 
 
