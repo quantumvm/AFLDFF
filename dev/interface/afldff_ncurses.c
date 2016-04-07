@@ -163,10 +163,8 @@ static void main_menu(){
         main_menu_bottom(bottom_win);
         ITEM * choice = main_menu_left(left_win, my_menu); 
 
-        /************************************************
-         *Switch used to control Main menu options      *
-         ************************************************/
-                
+//SWITCH USED TO CONTROL MAIN MENU OPTIONS
+
         if(choice != NULL){
             char * menu_selection = (char *) item_name(choice);
             //VIEW JOBS
@@ -342,6 +340,7 @@ void print_packet(void * structure, int line, int selected_element, WINDOW * win
 
 }
 
+
 static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, int keyboard_input, int active_window){
     
     
@@ -349,17 +348,12 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
     
     pthread_mutex_lock(&ll_mutex);
         
-/*********************************
- *Build menu queue               *
- *********************************/
+//BUILD MENU QUEUE
 
         GQueue * menu_queue = g_queue_new();
 
         for(int i = 0; i < get_total_jobs(GLOBAL_JOB_MATRIX); i++){
             GSList * job_group = g_slist_nth(GLOBAL_JOB_MATRIX, i);
-            //FIXME TEST CASE DELETE ME
-            //    job_node * testme = job_group->data;
-            //    testme->is_open = 1;
 
             //set the job handler
             struct menu_queue_handler * mqhj = calloc(1, sizeof(struct menu_queue_handler));
@@ -382,9 +376,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
 
         }
         
-/*********************************
- *Handle printing                *
- *********************************/
+//HANDLE PRINTING
 
         //statement below looks redundent but used to truncate elements max_display
         int start_element = max_display*(selected_element/max_display);
@@ -411,9 +403,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
         }
         
 
-/*********************************
- *Check for right menu selection *
- *********************************/
+//CHECK FOR RIGHT MENU SELECTION
         if(active_window){
             if(keyboard_input == '\n'){
                 struct menu_queue_handler * queue_item =  g_queue_peek_nth(menu_queue, selected_element);
@@ -439,6 +429,13 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
 
 }
 
+
+/*
+ * @view_jobs_right draws box and tittles for the right menu. This
+ * function also calls view_jobs_right_list_jobs to handle its
+ * components that need live updating.
+ */
+
 static int view_jobs_right(WINDOW * right_win, int selected_element, int keyboard_input, int window_is_active){
     
     werase(right_win);
@@ -462,6 +459,11 @@ static int view_jobs_right(WINDOW * right_win, int selected_element, int keyboar
     return job_items;
 }
 
+/*
+ * @view_jobs intializes the state of the view_jobs menu. This function 
+ * initializes windows, handles the logic for the menu system, and 
+ * creates the main loop used for live updating.
+ */
 
 static void view_jobs(){
     clear();
@@ -596,6 +598,12 @@ static void view_jobs(){
     return;   
 }
 
+
+/*
+ * @woops user selects a menu option that does not exist.
+ * This function should never get called.
+ */
+
 static void woops(){
     char error_message[] = "Woops! your not suppose to be here!";
     
@@ -606,6 +614,13 @@ static void woops(){
     endwin();
     exit(1);
 }
+
+
+/*
+ * @draw_afldff_interface this should be the only function
+ * called outside of a afldff-ncurses.c This function controls
+ * the state of main menu.
+ */
 
 void draw_afldff_interface(){
     initscr();
