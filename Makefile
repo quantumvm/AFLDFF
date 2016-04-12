@@ -1,6 +1,6 @@
-CC = gcc
+CC = gcc -m32
 CFLAGS = -Wall -std=gnu99 -fsanitize=address
-PKG = `pkg-config --cflags --libs glib-2.0` -pthread -lmenu -lncurses -lpanel -lssl -lcrypto
+PKG = `pkg-config --cflags --libs glib-2.0` -pthread -lmenu -lncurses -lpanel -lssl -lcrypto -lssh
 
 default: main
 

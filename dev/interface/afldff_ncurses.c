@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 #include <glib.h>
+#include <libssh/libssh.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -21,6 +22,9 @@
 
 #define LEFT 0
 #define RIGHT 1
+#define FALSE 0
+#define TRUE 1
+
 
 extern GQueue * NEW_NODE_QUEUE;
 extern GSList * GLOBAL_JOB_MATRIX;
@@ -35,8 +39,45 @@ static size_t terminal_x = 80;
 static size_t terminal_y = 24;
 
 //Our state machine kept in the data segment
-enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, WOOPS};
+enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, STOP_JOBS, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
+
+
+
+/*
+ * @global_job_list_iterator function for performing an action ($action) for
+ * each element in the global job list. It also provides a thread safe 
+ * context to do so.
+ *
+ */
+static void global_job_list_iterator(void (*action)(packet_info * pi, job_node * job, void * data), void * data){
+
+    pthread_mutex_lock(&ll_mutex);
+        
+        //iterate through 
+        for(GSList * gslp_job = GLOBAL_JOB_MATRIX; 
+            gslp_job; 
+            gslp_job = gslp_job->next){
+            
+            job_node * job = gslp_job->data;
+            for(GSList * gslp_node = job->packet_info_list; 
+                gslp_node; 
+                gslp_node = gslp_node->next){
+            
+                action(gslp_node->data, gslp_job->data, data);
+            }
+        }
+        
+    pthread_mutex_unlock(&ll_mutex);
+}
+
+
+
+/************************************************
+ *                                              *
+ *                  MAIN MENU                   *
+ *                                              *
+ * **********************************************/
 
 static void main_menu_bottom(WINDOW * window){
     werase(window);
@@ -225,6 +266,128 @@ static void apply_patch(){
 }
 
 
+/************************************************
+ *                                              *
+ *                  STOP JOBS                   *
+ *                                              *
+ * **********************************************/
+
+struct ssh_on_connect_handler{
+    void (*handler)(ssh_session * sshs);
+};
+
+
+//Do better error checking here later...
+
+static int verify_known_host(ssh_session session){
+    int state;
+    
+    state = ssh_is_server_known(session);
+    
+    switch(state){
+        case SSH_SERVER_KNOWN_OK:
+            break;
+        case SSH_SERVER_KNOWN_CHANGED:
+            break;
+        case SSH_SERVER_FOUND_OTHER:
+            break;
+        case SSH_SERVER_FILE_NOT_FOUND:
+            break;
+        case SSH_SERVER_NOT_KNOWN:
+            break;
+        case SSH_SERVER_ERROR:
+            printw("Failed to verify known host: %s\n", ssh_get_error(session));
+            return -1;
+    }
+
+    return 0;
+    
+}
+
+
+/*
+ * @ssh_handler This function establishes a ssh context for issuing commands
+ */
+
+void ssh_handler(packet_info * pi, job_node * job, void * data){
+    ssh_session my_ssh_session;
+    int rc;
+
+
+    //node is not selected skip it
+    if(pi->is_selected == FALSE){
+        return;
+    }
+
+    //create the ssh session
+    my_ssh_session = ssh_new();
+    if(my_ssh_session == NULL){
+        printw("Failed to create instance for node %d\n", pi->p->instance_id); 
+        refresh();
+        return;
+    }
+    
+    //set the ip for the ssh session we will assume the box is just
+    //listening on port 22. Would like to make that configureable later.
+    
+    //get the ip that the box connected to the server from (This might
+    //be wrong really need to add a config file for the user)
+    struct sockaddr_in * sockin = (struct sockaddr_in *) &pi->src_addr;
+    char * source_ip = inet_ntoa(sockin->sin_addr);
+
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_HOST, source_ip);
+    ssh_options_set(my_ssh_session, SSH_OPTIONS_USER, "user");
+    
+    //try and connect to selected node 
+    rc = ssh_connect(my_ssh_session);
+    
+    if(rc != SSH_OK){
+        printw("Failed to connect to %s: %s\n", source_ip, ssh_get_error(my_ssh_session));
+        refresh();
+        return;
+    }
+
+    //server authentication
+    verify_known_host(my_ssh_session);
+
+    //authenticate with public/private key
+    ssh_userauth_publickey_auto(my_ssh_session, NULL, NULL);
+    
+    //perform actions after authentication
+    ((struct ssh_on_connect_handler *) data)->handler(&my_ssh_session);
+    
+
+    //Tell ncurses to refresh the screen
+    refresh();
+    
+
+    //free the ssh session
+    ssh_free(my_ssh_session);
+    
+}
+
+
+void stop_job_on_connect(ssh_session * sshs){
+    printw("WOOOT!\n");
+    refresh();
+}
+
+static void stop_jobs(){
+    clear(); 
+    char message[] = "Stopping jobs...\n";
+    printw(message);
+    refresh();
+   
+    struct ssh_on_connect_handler stop_job_handler;
+    stop_job_handler.handler = stop_job_on_connect; 
+
+    global_job_list_iterator(ssh_handler, &stop_job_handler);
+    getchar();
+
+    global_state = VIEW_JOBS;
+    return;
+}
+
 
 /************************************************
  *                                              *
@@ -281,12 +444,16 @@ static char * hash_to_string(unsigned char * hash){
 
 
 
-
-//Doing some janky stuff here that mimics object oriented programing.
-//Object pushed onto the menu queue are of type menu queue handler.
-//structure in menu_queue_handler is either a job_node or a packet 
-//info structure. The handler lets us set the item in the structure
-//appropriately.
+/*Doing some janky stuff here that mimics object oriented programing.
+  Object pushed onto the menu queue are of type menu queue handler.
+  structure in menu_queue_handler is either a job_node or a packet 
+  info structure. The handler lets us set the item in the structure
+  appropriately.
+  
+  Most of these functions are not static because of the use of 
+  function pointers.
+  
+  */
 
 struct menu_queue_handler{
     void * structure;
@@ -564,7 +731,7 @@ static void view_jobs(){
             char * menu_selection = (char *) item_name(choice);
             //STOP JOB
             if(strcmp(menu_selection, left_view_jobs_options[0]) == 0){ 
-                global_state = VIEW_JOBS;
+                global_state = STOP_JOBS;
                 break;
             }
             //COLLECT CRASHES
@@ -637,6 +804,7 @@ void draw_afldff_interface(){
             case MAIN_MENU: main_menu(); break;
             case APPLY_PATCH: apply_patch(); break;
             case VIEW_JOBS: view_jobs(); break;
+            case STOP_JOBS: stop_jobs(); break;
             case WOOPS: woops(); break;
 
         }
