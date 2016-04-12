@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <ncurses.h>
 #include <menu.h>
 
@@ -13,6 +15,7 @@
 #include <libssh/libssh.h>
 
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -39,7 +42,7 @@ static size_t terminal_x = 80;
 static size_t terminal_y = 24;
 
 //Our state machine kept in the data segment
-enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, STOP_JOBS, WOOPS};
+enum afldff_state {MAIN_MENU, VIEW_JOBS, APPLY_PATCH, STOP_JOBS, COLLECT_CRASHES, WOOPS};
 enum afldff_state global_state = MAIN_MENU;
 
 
@@ -485,6 +488,94 @@ static void stop_jobs(){
 
 /************************************************
  *                                              *
+ *               COLLECT CRASHES                *
+ *                                              *
+ * **********************************************/
+
+void collect_crashes_on_connect(ssh_session * sshs, void * data){
+    ssh_scp scp;
+    int rc;
+    
+    scp = ssh_scp_new(*sshs, SSH_SCP_READ|SSH_SCP_RECURSIVE, "/home/user/out/crashes/*" );
+    rc = ssh_scp_init(scp);
+    rc = ssh_scp_pull_request(scp);
+
+    while(rc == SSH_SCP_REQUEST_NEWFILE){
+        
+        int size = ssh_scp_request_get_size(scp);
+        char * filename = strdup(ssh_scp_request_get_filename(scp));
+        char * buffer = malloc(size);
+        
+        printw("Recieveing file %s, - %d\n", filename, size);
+        
+        //make path for fopen...
+        char * new_file_path;
+        asprintf(&new_file_path, "./crashes/%s", filename);
+        FILE * fd = fopen(new_file_path, "w");
+
+        ssh_scp_accept_request(scp);
+        rc = ssh_scp_read(scp, buffer, size);
+
+        if(rc == SSH_ERROR){
+            attron(COLOR_PAIR(3));
+            printw("Failed to retrieve file:%s\n", filename);
+            attroff(COLOR_PAIR(3));
+            continue;
+        }
+        
+        fwrite(buffer, 1, rc, fd);
+        fclose(fd);
+        
+        free(new_file_path);
+        free(filename);
+        free(buffer);
+        
+        //start the process over again.
+        rc = ssh_scp_pull_request(scp);
+    }
+
+    ssh_scp_close(scp);
+    ssh_scp_free(scp);
+
+
+}
+
+
+static void collect_crashes(){
+    clear();
+    
+    attron(COLOR_PAIR(2));
+    char message[] = "Collecting crashes...\n";
+    printw(message);
+    attroff(COLOR_PAIR(2));
+    refresh();
+    
+    
+    printw("Creating directory ./crashes to store crashes...\n");
+    mkdir("./crashes", 0755);
+
+
+    struct ssh_on_connect_handler collect_crashes_handler;
+    collect_crashes_handler.handler = collect_crashes_on_connect; 
+
+    global_job_list_iterator(ssh_handler, &collect_crashes_handler);
+    
+    attron(COLOR_PAIR(4));
+    printw("Finished collecting crashes. [Press enter to continue]\n");
+    attroff(COLOR_PAIR(4));
+    refresh();
+
+    getchar();
+
+    global_state = VIEW_JOBS;
+    return;
+}
+
+
+
+
+/************************************************
+ *                                              *
  *                  VIEW JOBS                   *
  *                                              *
  * **********************************************/
@@ -841,7 +932,7 @@ static void view_jobs(){
             }
             //COLLECT CRASHES
             else if(strcmp(menu_selection, left_view_jobs_options[1]) == 0){
-                global_state = WOOPS;
+                global_state = COLLECT_CRASHES;
                 return;
             }
             //MAIN MENU
@@ -910,6 +1001,7 @@ void draw_afldff_interface(){
             case APPLY_PATCH: apply_patch(); break;
             case VIEW_JOBS: view_jobs(); break;
             case STOP_JOBS: stop_jobs(); break;
+            case COLLECT_CRASHES: collect_crashes(); break;
             case WOOPS: woops(); break;
 
         }
