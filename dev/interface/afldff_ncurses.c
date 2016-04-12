@@ -273,7 +273,7 @@ static void apply_patch(){
  * **********************************************/
 
 struct ssh_on_connect_handler{
-    void (*handler)(ssh_session * sshs);
+    void (*handler)(ssh_session * sshs, void * data);
 };
 
 
@@ -342,7 +342,11 @@ void ssh_handler(packet_info * pi, job_node * job, void * data){
     rc = ssh_connect(my_ssh_session);
     
     if(rc != SSH_OK){
+        
+        attron(COLOR_PAIR(3));
         printw("Failed to connect to %s: %s\n", source_ip, ssh_get_error(my_ssh_session));
+        attroff(COLOR_PAIR(3));
+        
         refresh();
         return;
     }
@@ -354,7 +358,7 @@ void ssh_handler(packet_info * pi, job_node * job, void * data){
     ssh_userauth_publickey_auto(my_ssh_session, NULL, NULL);
     
     //perform actions after authentication
-    ((struct ssh_on_connect_handler *) data)->handler(&my_ssh_session);
+    ((struct ssh_on_connect_handler *) data)->handler(&my_ssh_session, pi);
     
 
     //Tell ncurses to refresh the screen
@@ -367,14 +371,98 @@ void ssh_handler(packet_info * pi, job_node * job, void * data){
 }
 
 
-void stop_job_on_connect(ssh_session * sshs){
-    printw("WOOOT!\n");
+void stop_job_on_connect(ssh_session * sshs, void * data){
+    ssh_channel channel;
+    int rc;
+    char msg_buffer[512];
+
+    packet_info * pi = data;
+    int mach_id = pi->p->instance_id;
+
+    printw("Attempting to stop machine %d...\n", mach_id);
+    refresh();
+
+    //open up new ssh channel
+    channel = ssh_channel_new(*sshs);
+    if(channel == NULL){
+        attron(COLOR_PAIR(3));
+        printw("Failed to stop process (bad ssh channel)");
+        attroff(COLOR_PAIR(3));
+        refresh();
+        return;
+    }
+    
+    //start ssh session
+    rc = ssh_channel_open_session(channel);
+    if(rc != SSH_OK){
+        attron(COLOR_PAIR(3));
+        printw("Failed to stop process (could not create ssh session)");
+        attroff(COLOR_PAIR(3));
+        refresh();
+        return;
+    }
+
+    
+    //Exec command!
+    rc = ssh_channel_request_exec(channel, "pkill afl-fuzz");
+    if(rc != SSH_OK){
+        attron(COLOR_PAIR(3));
+        printw("Failed to stop process (Failed to execute command)");
+        attroff(COLOR_PAIR(3));
+        refresh();
+        ssh_channel_close(channel);
+        ssh_channel_free(channel);
+        return;
+    }
+    
+    //The pkill command should have returned nothing. If it returned
+    //something else notify the user and print the returned output.
+    int n_bytes = ssh_channel_read(channel, msg_buffer, sizeof(msg_buffer), 0);
+    if(n_bytes != 0){
+        attron(COLOR_PAIR(3));
+        printw("pkill on afl-fuzz may not have executed properly...");
+        attroff(COLOR_PAIR(3));       
+        
+        refresh();
+    }
+    
+    while(n_bytes > 0){
+        attron(COLOR_PAIR(2));
+        printw(msg_buffer);
+        attroff(COLOR_PAIR(2)); 
+        refresh();
+        
+        n_bytes = ssh_channel_read(channel, msg_buffer, sizeof(msg_buffer), 0);
+    }
+
+    if (n_bytes < 0){
+         
+        attron(COLOR_PAIR(3));
+        printw("pkill bad read...");
+        attroff(COLOR_PAIR(3));       
+        refresh();
+        
+        ssh_channel_close(channel);
+        ssh_channel_free(channel);
+
+        return;
+    }
+    
+    ssh_channel_send_eof(channel);
+    ssh_channel_close(channel);
+    ssh_channel_free(channel);
+    
+    printw("Machine %d has been stopped!\n", mach_id);
     refresh();
 }
 
 static void stop_jobs(){
-    clear(); 
+    clear();
+    
+    attron(COLOR_PAIR(2));
     char message[] = "Stopping jobs...\n";
+    attroff(COLOR_PAIR(2));
+    
     printw(message);
     refresh();
    
@@ -382,6 +470,12 @@ static void stop_jobs(){
     stop_job_handler.handler = stop_job_on_connect; 
 
     global_job_list_iterator(ssh_handler, &stop_job_handler);
+    
+    attron(COLOR_PAIR(4));
+    printw("Finished stopping jobs. [Press enter to continue]\n");
+    attroff(COLOR_PAIR(4));
+    refresh();
+
     getchar();
 
     global_state = VIEW_JOBS;
@@ -642,7 +736,7 @@ static void view_jobs(){
     init_pair(1, COLOR_BLUE, 0);
     init_pair(2, COLOR_YELLOW, 0); 
     init_pair(3, COLOR_RED, 0);
- 
+    init_pair(4, COLOR_GREEN, 0); 
 
     //create windows
     left_win = newwin(terminal_y, 21, 0, 0);
