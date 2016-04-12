@@ -552,7 +552,7 @@ static char * hash_to_string(unsigned char * hash){
 struct menu_queue_handler{
     void * structure;
     void (*toggle)(void * structure);
-    void (*print)(void * structure, int line, int selected_element, WINDOW * window);
+    void (*print)(void * structure, int line, int selected_element, int active_window, WINDOW * window);
 };
 
 void toggle_job(void * structure){
@@ -560,14 +560,25 @@ void toggle_job(void * structure){
     job->is_open = job->is_open ? 0:1;
 }
 
-void print_job(void * structure, int line, int selected_element, WINDOW * window){
+void print_job(void * structure, int line, int selected_element, int active_window, WINDOW * window){
 
     job_node * job = structure;
     char * hash = hash_to_string((unsigned char *)job->hash);
     
+    if(line!=selected_element){
+        wattron(window, COLOR_PAIR(2));
+    }else{
+        if(active_window == FALSE){
+            wattron(window, COLOR_PAIR(2));
+        }
+    }
+
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 - 6, "%.16s...", hash); 
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 2, "%lld", get_crash_cases_by_job(job->packet_info_list));
     mvwprintw(window, 3+line, 1+(terminal_x-20)/4 * 3, "%lld", get_test_cases_by_job(job->packet_info_list));
+    
+    wattroff(window, COLOR_PAIR(2));
+    
     free(hash);
     
 }
@@ -577,7 +588,7 @@ void toggle_packet(void * structure){
     pi->is_selected = pi->is_selected ? 0:1;
 }
 
-void print_packet(void * structure, int line, int selected_element, WINDOW * window){
+void print_packet(void * structure, int line, int selected_element, int active_window, WINDOW * window){
  
     packet_info * pi = structure;
     packet * p = pi->p;
@@ -655,7 +666,7 @@ static int view_jobs_right_list_jobs(WINDOW * right_win, int selected_element, i
                 wattron(right_win, COLOR_PAIR(1));
             }
             
-            queue_item->print(queue_item->structure, i, selected_element, right_win);  
+            queue_item->print(queue_item->structure, i, selected_element, active_window, right_win);  
 
             if((i == selected_element) && active_window){
                 wattroff(right_win, COLOR_PAIR(1));
